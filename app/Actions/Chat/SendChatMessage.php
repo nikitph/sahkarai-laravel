@@ -48,7 +48,7 @@ class SendChatMessage
 
         $tokens = $this->estimateTokens($content);
         $threshold = (int) config('sahkarai.ai.context_window_tokens');
-        if ($chat->status !== 'active' || $chat->context_tokens + $tokens >= $threshold) {
+        if ($chat->status !== 'active' || $chat->context_tokens + $tokens > $threshold) {
             if ($chat->status === 'active') {
                 $chat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
             }
@@ -92,7 +92,7 @@ class SendChatMessage
                 ],
             ]);
             $chat->increment('context_tokens', $answerTokens);
-            if ($chat->fresh()->context_tokens >= (int) config('sahkarai.ai.context_window_tokens')) {
+            if ($chat->fresh()->context_tokens > (int) config('sahkarai.ai.context_window_tokens')) {
                 $chat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
             }
 

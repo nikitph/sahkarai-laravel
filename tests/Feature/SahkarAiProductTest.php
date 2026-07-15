@@ -28,7 +28,9 @@ use App\Models\RegulatoryDocument;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Archive\ArchiveSearch;
+use App\Services\Ingestion\ConfiguredFeedAdapter;
 use App\Services\Ingestion\SourceRegistry;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -177,6 +179,28 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'in_app', 'status' => 'delivered']);
     }
 
+    public function test_new_document_notification_eligibility_uses_version_ingestion_time(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $document->update(['created_at' => now()]);
+        $version->update(['acquired_at' => now()->subMonths(2)]);
+        $user = User::factory()->tier1()->create();
+        $user->subscription()->create([
+            'tier' => Tier::Tier1,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => now()->subMonth(),
+            'current_period_end' => now()->addMonth(),
+        ]);
+        $user->notificationPreference()->create();
+
+        app(NotifyRegulatoryUpdate::class)->handle($version->fresh());
+
+        $this->assertDatabaseMissing('product_notifications', [
+            'user_id' => $user->id,
+            'dedupe_key' => "regulatory:{$version->id}:user:{$user->id}",
+        ]);
+    }
+
     public function test_signed_and_idempotent_razorpay_webhook_activates_cycle_credits(): void
     {
         config(['sahkarai.razorpay.webhook_secret' => 'test-secret']);
@@ -244,6 +268,23 @@ class SahkarAiProductTest extends TestCase
                 ->where('filterOptions.sources.0.value', 'rbi')
                 ->where('filterOptions.types.0.value', 'master_direction')
                 ->where('filterOptions.applicability.0.value', 'pacs'));
+    }
+
+    public function test_archive_search_stub_uses_the_matched_field_and_all_applicability_tags(): void
+    {
+        [$document] = $this->documentWithInterpretation();
+        $document->update([
+            'title' => 'Capital Adequacy Update',
+            'applicability_tags' => ['ucb', 'dccb'],
+        ]);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('archive.index', ['q' => 'capital']))
+            ->assertInertia(fn ($page) => $page
+                ->where('documents.data.0.title', 'Capital Adequacy Update')
+                ->where('documents.data.0.snippet', 'Capital Adequacy Update')
+                ->where('documents.data.0.matched_field', 'title')
+                ->where('documents.data.0.applicability_tags', ['ucb', 'dccb']));
     }
 
     public function test_interpretation_locale_can_be_switched_without_persisting_and_falls_back_to_english(): void
@@ -384,6 +425,43 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame('2026-08-01', $document->effective_at?->toDateString());
     }
 
+    public function test_interpretation_metadata_is_shared_and_cannot_diverge_by_locale(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $version->interpretation()->delete();
+        $summary = implode(' ', array_fill(0, 150, 'word'));
+        $responses = collect(SupportedLocale::cases())->map(function (SupportedLocale $locale) use ($summary): array {
+            return [
+                'locale' => $locale->value,
+                'summary' => $summary,
+                'takeaways' => ['First action.', 'Second action.', 'Third action.'],
+                'glossary' => [],
+                'deadlines' => [[
+                    'due_date' => $locale === SupportedLocale::English ? '2026-09-30' : '2099-01-01',
+                    'description' => 'Shared deadline.',
+                ]],
+                'applicability_tags' => $locale === SupportedLocale::English ? ['ucb'] : ['pacs'],
+                'effective_date' => $locale === SupportedLocale::English ? '2026-08-01' : '2099-01-01',
+                'document_type' => $locale === SupportedLocale::English ? 'circular' : 'faq',
+            ];
+        })->all();
+        RegulatoryInterpretationAgent::fake($responses)->preventStrayPrompts();
+
+        (new GenerateInterpretation($version->id))->handle(
+            app(GenerateLocaleInterpretation::class),
+            app(NotifyRegulatoryUpdate::class),
+        );
+
+        $interpretation = $version->interpretation()->firstOrFail();
+        $this->assertArrayNotHasKey('applicability_tags', $interpretation->locale_payloads['hi']);
+        $this->assertSame(['ucb'], $interpretation->applicability_tags);
+        $this->assertSame(['ucb'], $interpretation->payloadFor('hi')['applicability_tags']);
+        $this->assertSame('2026-08-01', $interpretation->payloadFor('gu')['effective_date']);
+        $this->assertSame('circular', $interpretation->payloadFor('mr')['document_type']);
+        $this->assertSame('2026-09-30', $interpretation->payloadFor('hi')['deadlines'][0]['due_date']);
+        $this->assertSame(['ucb'], $document->refresh()->applicability_tags);
+    }
+
     public function test_text_extraction_is_idempotent_after_success(): void
     {
         Storage::fake('local');
@@ -436,6 +514,8 @@ class SahkarAiProductTest extends TestCase
             'RBI-BROKEN-1',
             'Unavailable circular',
             'https://example.test/unavailable.pdf',
+            'https://example.test/unavailable.pdf',
+            publishedAt: CarbonImmutable::parse('2026-05-15'),
         );
         $adapter = Mockery::mock(SourceAdapter::class);
         $adapter->shouldReceive('discover')->once()->andReturn([$candidate]);
@@ -454,6 +534,69 @@ class SahkarAiProductTest extends TestCase
             'acquisition_failed:RBI-BROKEN-1',
             (string) PollRun::query()->sole()->error,
         );
+    }
+
+    public function test_poll_counts_and_records_each_malformed_candidate_without_stopping(): void
+    {
+        $valid = new DocumentCandidate(
+            RegulatorySource::Rbi,
+            'RBI-CIRC-2026-002',
+            'Valid circular',
+            'https://example.test/valid.pdf',
+            'https://example.test/valid.pdf',
+            publishedAt: CarbonImmutable::parse('2026-05-15'),
+        );
+        $invalid = [
+            new DocumentCandidate(RegulatorySource::Rbi, '', 'Title', 'https://example.test/a.pdf', 'https://example.test/a.pdf', publishedAt: CarbonImmutable::parse('2026-05-15')),
+            new DocumentCandidate(RegulatorySource::Rbi, '2', '', 'https://example.test/b.pdf', 'https://example.test/b.pdf', publishedAt: CarbonImmutable::parse('2026-05-15')),
+            new DocumentCandidate(RegulatorySource::Rbi, '3', 'Title', 'https://example.test/c.pdf', null, publishedAt: CarbonImmutable::parse('2026-05-15')),
+            new DocumentCandidate(RegulatorySource::Rbi, '4', 'Title', 'https://example.test/d.pdf', 'https://example.test/d.pdf'),
+            new DocumentCandidate(RegulatorySource::Rbi, '5', 'Title', 'https://example.test/e.pdf', 'https://example.test/e.pdf', null, publishedAt: CarbonImmutable::parse('2026-05-15')),
+            new DocumentCandidate(RegulatorySource::Rbi, '6', 'Title', '', 'https://example.test/f.pdf', publishedAt: CarbonImmutable::parse('2026-05-15')),
+        ];
+        $adapter = Mockery::mock(SourceAdapter::class);
+        $adapter->shouldReceive('discover')->once()->andReturn([...$invalid, $valid]);
+        $registry = Mockery::mock(SourceRegistry::class);
+        $registry->shouldReceive('adapter')->once()->andReturn($adapter);
+        Http::fake(['https://example.test/valid.pdf' => Http::response('pdf', 200, ['Content-Type' => 'application/pdf'])]);
+        Queue::fake();
+
+        (new RunSourcePoll(RegulatorySource::Rbi))->handle($registry, app(AcquireDocument::class));
+
+        $run = PollRun::query()->sole();
+        $this->assertSame(7, $run->discovered_count);
+        $this->assertSame(1, $run->created_count);
+        $this->assertSame(6, $run->failed_count);
+        $this->assertSame('partial', $run->status);
+        foreach (['source_document_id', 'title', 'source_url', 'published_date', 'document_type', 'download_handle'] as $field) {
+            $this->assertStringContainsString("candidate_invalid:{$field}", (string) $run->error);
+        }
+        $this->assertDatabaseHas('regulatory_documents', ['source_document_id' => 'RBI-CIRC-2026-002']);
+    }
+
+    public function test_configured_feed_adapter_preserves_canonical_source_identity_and_contract_fields(): void
+    {
+        config(['sahkarai.ingestion.sources.rbi.feed_url' => 'https://rbi.example.test/feed.xml']);
+        Http::fake(['https://rbi.example.test/feed.xml' => Http::response(<<<'XML'
+            <?xml version="1.0"?>
+            <rss><channel><item>
+              <guid>RBI-CIRC-2026-001</guid>
+              <title>Capital Adequacy Update</title>
+              <link>https://rbi.example.test/RBI-CIRC-2026-001.pdf</link>
+              <pubDate>Fri, 15 May 2026 09:00:00 GMT</pubDate>
+            </item></channel></rss>
+            XML)]);
+
+        $candidates = iterator_to_array((new ConfiguredFeedAdapter(RegulatorySource::Rbi))->discover());
+
+        $this->assertCount(1, $candidates);
+        $candidate = $candidates[0];
+        $this->assertSame('RBI-CIRC-2026-001', $candidate->sourceDocumentId);
+        $this->assertSame('Capital Adequacy Update', $candidate->title);
+        $this->assertSame('https://rbi.example.test/RBI-CIRC-2026-001.pdf', $candidate->sourceUrl);
+        $this->assertSame('2026-05-15', $candidate->publishedAt?->toDateString());
+        $this->assertSame(DocumentType::Other, $candidate->documentType);
+        $this->assertNotSame('', $candidate->downloadUrl);
     }
 
     public function test_issue_report_records_exact_version_and_locale_with_optional_category(): void
@@ -570,6 +713,113 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame($prior->id, $fresh->document_version_id);
         $this->assertNotSame($latest->id, $fresh->document_version_id);
         $this->assertDatabaseCount('chat_messages', 0);
+    }
+
+    public function test_context_threshold_allows_equality_and_closes_only_when_projected_tokens_exceed_it(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2(2)->create();
+        $threshold = (int) config('sahkarai.ai.context_window_tokens');
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+            'context_tokens' => $threshold - 1,
+        ]);
+
+        $this->assertNull(app(SendChatMessage::class)->prepare($user, $chat, 'a', (string) Str::uuid()));
+        $this->assertSame('active', $chat->refresh()->status);
+        $this->assertSame($threshold, $chat->context_tokens);
+
+        try {
+            app(SendChatMessage::class)->prepare($user->refresh(), $chat, 'b', (string) Str::uuid());
+            $this->fail('Expected the projected context overflow to be rejected.');
+        } catch (ValidationException) {
+            $this->assertSame('closed_context_full', $chat->refresh()->status);
+            $this->assertDatabaseCount('chat_messages', 1);
+            $this->assertSame(1, $user->refresh()->credits_balance);
+        }
+    }
+
+    public function test_zero_credit_message_is_rejected_with_stable_reason_and_rolls_back_the_message(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2(0)->create();
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+
+        try {
+            app(SendChatMessage::class)->prepare($user, $chat, 'Can I send this?', (string) Str::uuid());
+            $this->fail('Expected zero-credit validation to fail.');
+        } catch (ValidationException $exception) {
+            $this->assertSame('no_credits_remaining', $exception->errors()['credits'][0]);
+            $this->assertDatabaseCount('chat_messages', 0);
+            $this->assertDatabaseCount('credit_ledger', 0);
+        }
+    }
+
+    public function test_admin_issue_triage_records_contract_status_note_actor_and_timestamp(): void
+    {
+        [, $version] = $this->documentWithInterpretation();
+        $reporter = User::factory()->tier1()->create();
+        $admin = User::factory()->admin()->create();
+        $issue = $version->interpretation->issueReports()->create([
+            'user_id' => $reporter->id,
+            'document_version_id' => $version->id,
+            'locale' => 'en',
+            'category' => 'wrong_applicability',
+            'details' => 'This tag needs review.',
+        ]);
+
+        $this->actingAs($admin)->patch(route('ops.issues.update', $issue), [
+            'triage_status' => 'wontfix',
+            'internal_note' => 'User misunderstood the applicability tag.',
+        ])->assertSessionHasNoErrors();
+
+        $issue->refresh();
+        $this->assertSame('wontfix', $issue->status);
+        $this->assertSame('User misunderstood the applicability tag.', $issue->internal_note);
+        $this->assertSame($admin->id, $issue->triaged_by);
+        $this->assertNotNull($issue->triaged_at);
+        $this->assertNotNull($issue->resolved_at);
+    }
+
+    public function test_admin_user_lookup_returns_subscription_credits_chat_count_and_last_activity(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->tier2(137)->create(['email' => 'lookup@example.test']);
+        $user->subscription()->create([
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => now()->subMonth(),
+            'current_period_end' => now()->addMonth(),
+        ]);
+        Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+
+        $this->actingAs($admin)->get(route('ops.dashboard', ['q' => 'lookup@example.test']))
+            ->assertInertia(fn ($page) => $page
+                ->where('users.0.email', 'lookup@example.test')
+                ->where('users.0.tier', 'tier_2')
+                ->where('users.0.subscription_status', 'active')
+                ->where('users.0.credits_balance', 137)
+                ->where('users.0.chat_count', 1)
+                ->has('users.0.last_activity'));
+    }
+
+    public function test_saas_admin_dashboard_entry_redirects_to_operations(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertRedirect(route('ops.dashboard'));
     }
 
     /** @return array{RegulatoryDocument, DocumentVersion} */

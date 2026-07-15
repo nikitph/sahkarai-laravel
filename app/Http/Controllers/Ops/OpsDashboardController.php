@@ -35,11 +35,27 @@ class OpsDashboardController extends Controller
             'recentChatMetadata' => Chat::query()->latest()->limit(20)->get([
                 'id', 'user_id', 'document_version_id', 'status', 'created_at',
             ]),
-            'issues' => IssueReport::query()->with(['user:id,name,email', 'interpretation.version.document:id,title'])->latest()->limit(25)->get(),
+            'issues' => IssueReport::query()->with(['user:id,name,email', 'triagedBy:id,name,email', 'interpretation.version.document:id,title'])->latest()->limit(25)->get(),
             'alerts' => OpsAlert::query()->whereNull('resolved_at')->latest()->limit(25)->get(),
-            'users' => User::query()->when($request->string('q')->toString(), function ($query, string $q): void {
-                $query->where(fn ($query) => $query->where('email', 'like', "%{$q}%")->orWhere('name', 'like', "%{$q}%"));
-            })->limit(20)->get(['id', 'name', 'email', 'tier', 'role', 'created_at']),
+            'users' => User::query()
+                ->with('subscription:id,user_id,status')
+                ->withCount('chats')
+                ->withMax('chats', 'updated_at')
+                ->when($request->string('q')->toString(), function ($query, string $q): void {
+                    $query->where(fn ($query) => $query->where('email', 'like', "%{$q}%")->orWhere('name', 'like', "%{$q}%"));
+                })
+                ->limit(20)
+                ->get(['id', 'name', 'email', 'tier', 'role', 'credits_balance', 'created_at', 'updated_at'])
+                ->map(function (User $user): array {
+                    $chatActivity = $user->getAttribute('chats_max_updated_at');
+
+                    return [
+                        ...$user->only(['id', 'name', 'email', 'tier', 'role', 'credits_balance', 'created_at']),
+                        'subscription_status' => $user->subscription?->status->value,
+                        'chat_count' => $user->getAttribute('chats_count'),
+                        'last_activity' => max($user->updated_at?->toISOString() ?? '', (string) $chatActivity),
+                    ];
+                }),
         ]);
     }
 }

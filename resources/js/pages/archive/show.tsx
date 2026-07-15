@@ -508,7 +508,7 @@ export default function ArchiveShow({
                                                 className="w-full"
                                                 disabled={report.processing}
                                             >
-                                                Send report
+                                                Report issue
                                             </Button>
                                         </form>
                                     </CardContent>

@@ -25,7 +25,7 @@ Regulatory documents, versions, interpretations, poll runs, and ingestion alerts
 - `(source, source_document_id)` identifies a regulatory document.
 - Original bytes are stored once at a canonical path and identified by SHA-256.
 - Each changed byte sequence creates a new immutable `document_version`; revisions link with `supersedes_id`.
-- A document version has at most one interpretation row. Locale payloads are generated independently with bounded retries and provenance.
+- A document version has at most one interpretation row. Locale prose is generated independently with bounded retries; applicability, effective date, document type, and deadlines are stored once as locale-independent metadata.
 - A chat is permanently bound to one user and one document version.
 - Chat messages and credit-ledger entries are append-only. A user message and its one-credit debit happen atomically and idempotently.
 - Razorpay events are signature-verified and deduplicated before state transitions.

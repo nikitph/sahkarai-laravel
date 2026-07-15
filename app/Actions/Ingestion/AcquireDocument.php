@@ -16,6 +16,10 @@ class AcquireDocument
 {
     public function handle(DocumentCandidate $candidate): ?DocumentVersion
     {
+        if ($candidate->documentType === null) {
+            throw new RuntimeException('Cannot acquire a candidate without a document type.');
+        }
+
         $response = Http::timeout(60)->retry(2, 500)->get($candidate->downloadUrl)->throw();
         $contents = $response->body();
         if ($contents === '') {

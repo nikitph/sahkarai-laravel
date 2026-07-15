@@ -34,6 +34,14 @@ class RunSourcePoll implements ShouldQueue
 
         try {
             foreach ($registry->adapter($this->source)->discover() as $candidate) {
+                $run->increment('discovered_count');
+                if ($invalidField = $this->invalidField($candidate)) {
+                    $run->increment('failed_count');
+                    $errors[] = "candidate_invalid:{$invalidField}";
+
+                    continue;
+                }
+
                 if ($this->kind === 'backfill') {
                     if ($candidate->publishedAt?->lt(now()->subMonths((int) config('sahkarai.ingestion.backfill_months')))) {
                         continue;
@@ -51,7 +59,6 @@ class RunSourcePoll implements ShouldQueue
                         isBackfill: true,
                     );
                 }
-                $run->increment('discovered_count');
                 try {
                     if ($acquire->handle($candidate)) {
                         $run->increment('created_count');
@@ -95,9 +102,26 @@ class RunSourcePoll implements ShouldQueue
                 [
                     'severity' => 'critical',
                     'details' => $run->error,
-                    'context' => ['source' => $this->source->value, 'poll_run_id' => $run->getKey()],
+                    'context' => [
+                        'tag' => "ingestion.{$this->source->value}.three_consecutive_failures",
+                        'source' => $this->source->value,
+                        'poll_run_id' => $run->getKey(),
+                    ],
                 ],
             );
         }
+    }
+
+    private function invalidField(DocumentCandidate $candidate): ?string
+    {
+        return match (true) {
+            trim($candidate->sourceDocumentId) === '' => 'source_document_id',
+            trim($candidate->title) === '' => 'title',
+            $candidate->sourceUrl === null || trim($candidate->sourceUrl) === '' => 'source_url',
+            $candidate->publishedAt === null => 'published_date',
+            $candidate->documentType === null => 'document_type',
+            trim($candidate->downloadUrl) === '' => 'download_handle',
+            default => null,
+        };
     }
 }

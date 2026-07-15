@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -22,9 +22,11 @@ type Source = {
 };
 type Issue = {
     id: number;
-    category: string;
+    category: string | null;
     status: string;
     details: string;
+    internal_note: string | null;
+    triaged_at: string | null;
     created_at: string;
     user: { name: string; email: string } | null;
     interpretation: { version: { document: { title: string } } };
@@ -42,6 +44,10 @@ type User = {
     email: string;
     tier: string;
     role: string;
+    credits_balance: number;
+    subscription_status: string | null;
+    chat_count: number;
+    last_activity: string;
     created_at: string;
 };
 export default function OpsDashboard({
@@ -183,25 +189,7 @@ export default function OpsDashboard({
                                     <p className="mt-2 text-sm text-muted-foreground">
                                         {issue.details}
                                     </p>
-                                    {issue.status !== 'resolved' && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="mt-3"
-                                            onClick={() =>
-                                                router.patch(
-                                                    `/ops/issues/${issue.id}`,
-                                                    {
-                                                        status: 'resolved',
-                                                        resolution:
-                                                            'Reviewed by operations.',
-                                                    },
-                                                )
-                                            }
-                                        >
-                                            Resolve
-                                        </Button>
-                                    )}
+                                    <IssueTriageForm issue={issue} />
                                 </div>
                             ))}
                             {!issues.length && (
@@ -269,7 +257,10 @@ export default function OpsDashboard({
                                         <th className="py-2">User</th>
                                         <th>Tier</th>
                                         <th>Role</th>
-                                        <th>Joined</th>
+                                        <th>Subscription</th>
+                                        <th>Credits</th>
+                                        <th>Chats</th>
+                                        <th>Last activity</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -291,9 +282,15 @@ export default function OpsDashboard({
                                             </td>
                                             <td>{user.role}</td>
                                             <td>
+                                                {user.subscription_status ??
+                                                    'none'}
+                                            </td>
+                                            <td>{user.credits_balance}</td>
+                                            <td>{user.chat_count}</td>
+                                            <td>
                                                 {new Date(
-                                                    user.created_at,
-                                                ).toLocaleDateString()}
+                                                    user.last_activity,
+                                                ).toLocaleString()}
                                             </td>
                                         </tr>
                                     ))}
@@ -307,3 +304,45 @@ export default function OpsDashboard({
     );
 }
 OpsDashboard.layout = { breadcrumbs: [{ title: 'Operations', href: '/ops' }] };
+
+function IssueTriageForm({ issue }: { issue: Issue }) {
+    const form = useForm({
+        triage_status: issue.status === 'open' ? 'triaged' : issue.status,
+        internal_note: issue.internal_note ?? '',
+    });
+
+    return (
+        <form
+            className="mt-3 grid gap-2 sm:grid-cols-[140px_1fr_auto]"
+            onSubmit={(event) => {
+                event.preventDefault();
+                form.patch(`/ops/issues/${issue.id}`, { preserveScroll: true });
+            }}
+        >
+            <select
+                aria-label={`Triage status for issue ${issue.id}`}
+                value={form.data.triage_status}
+                onChange={(event) =>
+                    form.setData('triage_status', event.target.value)
+                }
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+            >
+                <option value="triaged">Triaged</option>
+                <option value="resolved">Resolved</option>
+                <option value="wontfix">Won't fix</option>
+            </select>
+            <Input
+                aria-label={`Internal note for issue ${issue.id}`}
+                value={form.data.internal_note}
+                onChange={(event) =>
+                    form.setData('internal_note', event.target.value)
+                }
+                placeholder="Internal note"
+                required
+            />
+            <Button size="sm" variant="outline" disabled={form.processing}>
+                Save triage
+            </Button>
+        </form>
+    );
+}

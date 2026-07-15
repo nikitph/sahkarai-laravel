@@ -72,11 +72,13 @@ class DatabaseSeeder extends Seeder
                     'locale' => $locale, 'summary' => $summary,
                     'takeaways' => ['Identify the exact entities and processes in scope.', 'Assign an accountable owner and retain implementation evidence.', 'Report material gaps and progress to the board or appropriate committee.'],
                     'glossary' => [['term' => 'Regulated entity', 'definition' => 'An institution to which the issuing authority applies the publication.']],
-                    'deadlines' => [['due_date' => now()->addDays(30 - $index)->toDateString(), 'description' => 'Target date shown in this seeded demonstration record.']],
-                    'applicability_tags' => [$applicability->value], 'effective_date' => now()->addDays(30 - $index)->toDateString(), 'document_type' => $type->value,
                 ]])->all(),
+                'applicability_tags' => [$applicability->value],
+                'effective_date' => now()->addDays(30 - $index)->toDateString(),
+                'document_type' => $type->value,
                 'failed_locales' => [], 'locale_attempts' => ['en' => 1, 'hi' => 1, 'gu' => 1, 'mr' => 1],
-                'deadlines' => [], 'model_id' => 'seeded-reference', 'prompt_version' => 'seed.1', 'attempts' => 1,
+                'deadlines' => [['due_date' => now()->addDays(30 - $index)->toDateString(), 'description' => 'Target date shown in this seeded demonstration record.']],
+                'model_id' => 'seeded-reference', 'prompt_version' => 'seed.1', 'attempts' => 1,
                 'generated_at' => now(), 'published_at' => now(),
             ]);
         }

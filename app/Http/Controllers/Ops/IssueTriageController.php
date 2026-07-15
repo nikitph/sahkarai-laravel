@@ -12,10 +12,16 @@ class IssueTriageController extends Controller
     public function update(Request $request, IssueReport $issue): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:open,investigating,resolved,dismissed'],
-            'resolution' => ['nullable', 'string', 'max:3000'],
+            'triage_status' => ['required', 'in:triaged,resolved,wontfix'],
+            'internal_note' => ['required', 'string', 'max:3000'],
         ]);
-        $issue->update([...$validated, 'resolved_at' => in_array($validated['status'], ['resolved', 'dismissed'], true) ? now() : null]);
+        $issue->update([
+            'status' => $validated['triage_status'],
+            'internal_note' => $validated['internal_note'],
+            'triaged_by' => $request->user()->getKey(),
+            'triaged_at' => now(),
+            'resolved_at' => in_array($validated['triage_status'], ['resolved', 'wontfix'], true) ? now() : null,
+        ]);
 
         return back()->with('success', 'Issue updated.');
     }

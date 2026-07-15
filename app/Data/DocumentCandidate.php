@@ -15,7 +15,7 @@ final readonly class DocumentCandidate
         public string $title,
         public string $downloadUrl,
         public ?string $sourceUrl = null,
-        public DocumentType $documentType = DocumentType::Other,
+        public ?DocumentType $documentType = DocumentType::Other,
         public Applicability $applicability = Applicability::Generic,
         public ?CarbonImmutable $publishedAt = null,
         public ?CarbonImmutable $effectiveAt = null,

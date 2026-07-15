@@ -11,7 +11,7 @@ class IssueReport extends Model
 
     protected function casts(): array
     {
-        return ['resolved_at' => 'datetime'];
+        return ['triaged_at' => 'datetime', 'resolved_at' => 'datetime'];
     }
 
     /** @return BelongsTo<User, $this> */
@@ -30,5 +30,11 @@ class IssueReport extends Model
     public function version(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'document_version_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function triagedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'triaged_by');
     }
 }

@@ -34,7 +34,7 @@ type Chat = {
         source: string;
         document_type: string;
     };
-    version: { version: number };
+    version: { id: number; version: number };
     messages: Message[];
 };
 export default function ChatShow({
@@ -198,7 +198,7 @@ export default function ChatShow({
                             </span>
                             <div className="min-w-0">
                                 <Link
-                                    href={`/archive/${chat.document.id}`}
+                                    href={`/archive/${chat.document.id}?version=${chat.version.id}`}
                                     className="truncate font-semibold hover:text-indigo-600 hover:underline"
                                 >
                                     {chat.document.title}
@@ -296,14 +296,16 @@ export default function ChatShow({
                         {chat.status !== 'active' ? (
                             <div className="rounded-xl bg-muted p-4 text-center text-sm">
                                 <p className="font-medium">
-                                    This chat is{' '}
-                                    {chat.status.replaceAll('_', ' ')}.
+                                    {chat.status === 'closed_context_full'
+                                        ? 'This chat has reached its context limit. Please start a new chat with the same document to continue.'
+                                        : 'This chat is closed.'}
                                 </p>
-                                <p className="mt-1 text-muted-foreground">
-                                    Its history and exports remain available.
-                                    Start a new chat from the document to
-                                    continue with a clean context.
-                                </p>
+                                {chat.status !== 'closed_context_full' && (
+                                    <p className="mt-1 text-muted-foreground">
+                                        Its history and exports remain
+                                        available.
+                                    </p>
+                                )}
                                 {chat.status === 'closed_context_full' && (
                                     <Button
                                         className="mt-3"
@@ -313,7 +315,7 @@ export default function ChatShow({
                                             )
                                         }
                                     >
-                                        Start new chat
+                                        Start new chat with this document
                                     </Button>
                                 )}
                             </div>

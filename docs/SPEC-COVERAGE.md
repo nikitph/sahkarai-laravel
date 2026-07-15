@@ -25,10 +25,12 @@ The source contract contains 59 Gherkin feature files. TypeScript files alongsid
 
 ## Verification map
 
-- `tests/Feature/SahkarAiProductTest.php`: tier access, registration defaults, privacy, credit atomicity/idempotency and cycle reset, context closure/restart pinning, canonical acquisition/revisions, extracted artifacts, structured AI output, issue capture, notification eligibility/revision references, locale fallback, archive sort/tags, signed subscription/top-up webhooks, proration, candidate poll errors, and consecutive poll alerts.
+- `tests/Feature/SahkarAiProductTest.php`: tier access, registration defaults, admin landing, privacy, credit atomicity/idempotency and cycle reset, context closure/restart pinning, canonical source adapter/acquisition/revisions, malformed candidate auditing, extracted artifacts, structured AI output, shared interpretation metadata, issue capture/triage audit, version-time notification eligibility/revision references, locale fallback, archive sort/tags/snippets, signed subscription/top-up webhooks, proration, and consecutive poll alerts.
 - Existing auth/settings/organization/conformance tests continue to protect initializer behavior.
 - `composer verify` runs formatting, PHPStan, the complete PHP test suite, ESLint, TypeScript, and a production Vite build.
-- The Docker/PostgreSQL smoke pass migrates and seeds an isolated database and exercises the compiled production image.
+- The Docker/PostgreSQL smoke pass covers both a clean 14-migration seed and rollback/re-upgrade from legacy locale-shaped metadata, then exercises the compiled production image as web/worker/scheduler/Reverb roles.
+
+Last offline conformance run (2026-07-16): 84 tests discovered, 76 passed, 8 external-verification tests skipped; 360 assertions. ESLint, Prettier, TypeScript, Pint, PHPStan, Vite production build, PostgreSQL 17 clean/upgrade migrations, Docker health, and compiled browser smoke checks passed.
 
 ## Pending live credentials
 

@@ -29,7 +29,7 @@ class AdjustCredits
             $locked = User::query()->withTrashed()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             $balance = $locked->credits_balance + $amount;
             if ($balance < 0) {
-                throw ValidationException::withMessages(['credits' => 'You do not have enough chat credits.']);
+                throw ValidationException::withMessages(['credits' => 'no_credits_remaining']);
             }
 
             $locked->forceFill(['credits_balance' => $balance])->save();

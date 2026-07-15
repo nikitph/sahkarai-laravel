@@ -12,6 +12,9 @@ use Illuminate\Support\Carbon;
  * @property int $document_version_id
  * @property string $status
  * @property array<string, array<string, mixed>>|null $locale_payloads
+ * @property array<int, string>|null $applicability_tags
+ * @property Carbon|null $effective_date
+ * @property string|null $document_type
  * @property array<string, string>|null $failed_locales
  * @property array<string, int>|null $locale_attempts
  * @property array<int, array<string, mixed>>|null $deadlines
@@ -30,6 +33,8 @@ class Interpretation extends Model
     {
         return [
             'locale_payloads' => 'array',
+            'applicability_tags' => 'array',
+            'effective_date' => 'date',
             'failed_locales' => 'array',
             'locale_attempts' => 'array',
             'deadlines' => 'array',
@@ -55,6 +60,17 @@ class Interpretation extends Model
     {
         $payloads = $this->locale_payloads ?? [];
 
-        return $payloads[$locale] ?? $payloads['en'] ?? null;
+        $localized = $payloads[$locale] ?? $payloads['en'] ?? null;
+        if ($localized === null) {
+            return null;
+        }
+
+        return [
+            ...$localized,
+            'applicability_tags' => $this->applicability_tags ?? [],
+            'effective_date' => $this->effective_date?->toDateString(),
+            'deadlines' => $this->deadlines ?? [],
+            'document_type' => $this->document_type,
+        ];
     }
 }

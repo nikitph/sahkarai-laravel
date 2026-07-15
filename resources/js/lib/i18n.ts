@@ -19,7 +19,7 @@ const copy = {
         takeaways: 'Key takeaways',
         glossary: 'Glossary',
         download: 'Download original',
-        startChat: 'Ask about this document',
+        startChat: 'Start chat with this document',
         unavailable: 'Interpretation not available for this document.',
         upgrade: 'Upgrade plan',
         login: 'Log in',

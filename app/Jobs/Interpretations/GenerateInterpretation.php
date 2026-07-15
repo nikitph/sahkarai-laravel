@@ -9,6 +9,7 @@ use App\Models\DocumentVersion;
 use App\Models\Interpretation;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Arr;
 use RuntimeException;
 use Throwable;
 
@@ -54,13 +55,24 @@ class GenerateInterpretation implements ShouldQueue
             fn (SupportedLocale $locale) => isset($payloads[$locale->value]) || ($attempts[$locale->value] ?? 0) >= 3,
         );
         $status = $this->status(count($payloads), $exhausted);
+        $metadata = $payloads['en'] ?? collect($payloads)->first(fn (array $payload) => array_key_exists('applicability_tags', $payload)) ?? [];
+        $applicabilityTags = $metadata['applicability_tags'] ?? $interpretation->applicability_tags ?? [];
+        $effectiveDate = $metadata['effective_date'] ?? $interpretation->effective_date?->toDateString();
+        $documentType = $metadata['document_type'] ?? $interpretation->document_type;
+        $deadlines = $metadata['deadlines'] ?? $interpretation->deadlines ?? [];
+        $localePayloads = collect($payloads)->map(
+            fn (array $payload) => Arr::except($payload, ['applicability_tags', 'effective_date', 'deadlines', 'document_type']),
+        )->all();
 
         $interpretation->update([
             'status' => $status,
-            'locale_payloads' => $payloads,
+            'locale_payloads' => $localePayloads,
+            'applicability_tags' => $applicabilityTags,
+            'effective_date' => $effectiveDate,
+            'document_type' => $documentType,
             'failed_locales' => $failures,
             'locale_attempts' => $attempts,
-            'deadlines' => collect($payloads)->pluck('deadlines')->flatten(1)->unique(fn ($item) => json_encode($item))->values()->all(),
+            'deadlines' => $deadlines,
             'model_id' => config('sahkarai.ai.interpretation_model'),
             'prompt_version' => config('sahkarai.ai.prompt_version'),
             'attempts' => max($attempts ?: [0]),

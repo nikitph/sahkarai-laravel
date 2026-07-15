@@ -6,6 +6,7 @@ use App\Contracts\Ingestion\SourceAdapter;
 use App\Data\DocumentCandidate;
 use App\Enums\RegulatorySource;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use SimpleXMLElement;
@@ -37,20 +38,29 @@ class ConfiguredFeedAdapter implements SourceAdapter
         foreach ($items as $item) {
             $link = (string) ($item->enclosure['url'] ?? $item->link['href'] ?? $item->link ?? '');
             $id = trim((string) ($item->guid ?? $item->id ?? $link));
-            if ($id === '' || $link === '') {
-                continue;
-            }
-
             $date = trim((string) ($item->pubDate ?? $item->published ?? $item->updated ?? ''));
 
             yield new DocumentCandidate(
                 source: $this->source(),
-                sourceDocumentId: hash('sha256', $id),
-                title: trim((string) ($item->title ?? 'Untitled regulatory document')),
+                sourceDocumentId: $id,
+                title: trim((string) ($item->title ?? '')),
                 downloadUrl: $link,
-                sourceUrl: $link,
-                publishedAt: $date !== '' ? CarbonImmutable::parse($date) : null,
+                sourceUrl: $link !== '' ? $link : null,
+                publishedAt: $this->parseDate($date),
             );
+        }
+    }
+
+    private function parseDate(string $date): ?CarbonImmutable
+    {
+        if ($date === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($date);
+        } catch (InvalidFormatException) {
+            return null;
         }
     }
 }

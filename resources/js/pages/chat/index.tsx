@@ -104,8 +104,8 @@ export default function ChatIndex({
                             <Coins className="mx-auto mb-4 size-9 text-muted-foreground" />
                             <h2 className="font-semibold">No chats yet</h2>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Open a document in the archive and choose “Ask
-                                about this document.”
+                                Open a document in the archive and choose “Start
+                                chat with this document.”
                             </p>
                         </div>
                     )}

@@ -34,7 +34,7 @@ class NotifyRegulatoryUpdate
 
                 $eligible = $version->version > 1
                     ? $user->documentViews()->where('document_version_id', $version->supersedes_id)->exists()
-                    : $user->subscription?->current_period_start?->lte($document->created_at) ?? false;
+                    : $user->subscription?->current_period_start?->lte($version->acquired_at) ?? false;
                 if (! $eligible) {
                     return;
                 }

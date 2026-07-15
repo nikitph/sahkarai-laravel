@@ -19,6 +19,7 @@ type Document = {
     source: string;
     document_type: string;
     applicability: string;
+    applicability_tags: string[];
     published_at: string | null;
     effective_at: string | null;
     version: number | null;
@@ -196,12 +197,19 @@ export default function ArchiveIndex({
                                                     ' ',
                                                 )}
                                             </Badge>
-                                            <Badge
-                                                variant="outline"
-                                                className="capitalize"
-                                            >
-                                                {document.applicability}
-                                            </Badge>
+                                            {(
+                                                document.applicability_tags ?? [
+                                                    document.applicability,
+                                                ]
+                                            ).map((tag) => (
+                                                <Badge
+                                                    key={tag}
+                                                    variant="outline"
+                                                    className="capitalize"
+                                                >
+                                                    {tag}
+                                                </Badge>
+                                            ))}
                                         </div>
                                         <span className="text-xs text-muted-foreground">
                                             v{document.version}

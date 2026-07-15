@@ -116,12 +116,17 @@ class ArchiveController extends Controller
             str_contains(mb_strtolower($englishText), $needle) => 'english_interpretation',
             default => 'localized_interpretation',
         };
+        $snippet = match ($matchedField) {
+            'title' => $document->title,
+            'extracted_text' => $text,
+            default => $english['summary'] ?? $text,
+        };
 
         return [
-            ...$document->only(['id', 'title', 'source', 'document_type', 'applicability', 'published_at', 'effective_at']),
+            ...$document->only(['id', 'title', 'source', 'document_type', 'applicability', 'applicability_tags', 'published_at', 'effective_at']),
             'version' => $document->latestVersion?->version,
             'status' => $document->latestVersion?->status,
-            'snippet' => $english ? str($english['summary'])->limit(180)->toString() : str($document->latestVersion?->extracted_text)->limit(180)->toString(),
+            'snippet' => str($snippet)->limit(180)->toString(),
             'matched_field' => $matchedField,
         ];
     }
