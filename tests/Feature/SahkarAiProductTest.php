@@ -9,6 +9,7 @@ use App\Actions\Interpretations\GenerateLocaleInterpretation;
 use App\Actions\Notifications\NotifyRegulatoryUpdate;
 use App\Ai\Agents\RegulatoryChatAgent;
 use App\Ai\Agents\RegulatoryInterpretationAgent;
+use App\Contracts\Billing\BillingGateway;
 use App\Contracts\Ingestion\SourceAdapter;
 use App\Data\DocumentCandidate;
 use App\Enums\Applicability;
@@ -17,16 +18,25 @@ use App\Enums\RegulatorySource;
 use App\Enums\SubscriptionStatus;
 use App\Enums\SupportedLocale;
 use App\Enums\Tier;
+use App\Jobs\Account\PurgeExpiredAccounts;
+use App\Jobs\Billing\ApplyPendingSubscriptionChanges;
+use App\Jobs\Billing\ReconcileSubscriptions;
 use App\Jobs\Ingestion\ExtractDocumentText;
 use App\Jobs\Ingestion\RunSourcePoll;
 use App\Jobs\Interpretations\GenerateInterpretation;
 use App\Models\Chat;
+use App\Models\ChatMessage;
+use App\Models\CreditLedger;
 use App\Models\DocumentVersion;
 use App\Models\DocumentView;
+use App\Models\IssueReport;
 use App\Models\PollRun;
+use App\Models\ProductNotification;
+use App\Models\ReconciliationDrift;
 use App\Models\RegulatoryDocument;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Notifications\RegulatoryUpdateMail;
 use App\Services\Archive\ArchiveSearch;
 use App\Services\Ingestion\ConfiguredFeedAdapter;
 use App\Services\Ingestion\SourceRegistry;
@@ -37,7 +47,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -179,6 +191,58 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'in_app', 'status' => 'delivered']);
     }
 
+    public function test_notification_preferences_expose_only_sources_and_email_cadence(): void
+    {
+        Notification::fake();
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier1()->create();
+        $user->subscription()->create([
+            'tier' => Tier::Tier1,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => $version->acquired_at->copy()->subDay(),
+            'current_period_end' => now()->addMonth(),
+        ]);
+        $user->notificationPreference()->create(['source_rbi_cadence' => 'immediate']);
+
+        $this->assertFalse(Schema::hasColumn('notification_preferences', 'in_app_enabled'));
+        $this->assertFalse(Schema::hasColumn('notification_preferences', 'email_enabled'));
+        $this->actingAs($user)->get(route('notifications.index'))
+            ->assertInertia(fn ($page) => $page
+                ->missing('preferences.in_app_enabled')
+                ->missing('preferences.email_enabled'));
+
+        app(NotifyRegulatoryUpdate::class)->handle($version);
+
+        Notification::assertSentTo($user, RegulatoryUpdateMail::class);
+        $this->assertDatabaseHas('notification_deliveries', [
+            'user_id' => $user->id,
+            'channel' => 'in_app',
+            'status' => 'delivered',
+        ]);
+        $this->assertDatabaseHas('notification_deliveries', [
+            'user_id' => $user->id,
+            'channel' => 'email',
+            'status' => 'queued',
+        ]);
+    }
+
+    public function test_invalid_notification_cadence_is_rejected_without_changing_preferences(): void
+    {
+        $user = User::factory()->tier1()->create();
+        $preference = $user->notificationPreference()->create();
+
+        $this->actingAs($user)->patch(route('notifications.preferences'), [
+            'source_rbi' => true,
+            'source_income_tax' => true,
+            'source_gst' => true,
+            'source_rbi_cadence' => 'hourly',
+            'source_income_tax_cadence' => 'daily_digest',
+            'source_gst_cadence' => 'weekly_digest',
+        ])->assertSessionHasErrors('source_rbi_cadence');
+
+        $this->assertSame('daily_digest', $preference->refresh()->source_rbi_cadence->value);
+    }
+
     public function test_new_document_notification_eligibility_uses_version_ingestion_time(): void
     {
         [$document, $version] = $this->documentWithInterpretation();
@@ -231,6 +295,37 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseCount('credit_ledger', 1);
     }
 
+    public function test_new_paid_subscription_launches_checkout_without_granting_access(): void
+    {
+        config(['sahkarai.razorpay.key_id' => 'rzp_test_key']);
+        $user = User::factory()->create();
+        $gateway = Mockery::mock(BillingGateway::class);
+        $gateway->shouldReceive('createSubscription')
+            ->once()
+            ->withArgs(fn (User $candidate, Tier $tier) => $candidate->is($user) && $tier === Tier::Tier1)
+            ->andReturn(['id' => 'sub_checkout_1', 'status' => 'created']);
+        $this->app->instance(BillingGateway::class, $gateway);
+
+        $this->actingAs($user)->post(route('billing.subscribe'), ['tier' => 'tier_1'])
+            ->assertRedirect()
+            ->assertSessionHas('razorpay_checkout', [
+                'key' => 'rzp_test_key',
+                'subscription_id' => 'sub_checkout_1',
+                'tier' => 'tier_1',
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+
+        $this->assertSame(Tier::Free, $user->refresh()->tier);
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'provider_subscription_id' => 'sub_checkout_1',
+            'tier' => 'tier_1',
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseMissing('credit_ledger', ['user_id' => $user->id]);
+    }
+
     public function test_archive_supports_title_sort_and_interpretation_applicability_tags(): void
     {
         foreach ([['Zulu circular', ['generic']], ['Alpha circular', ['pacs']]] as [$title, $tags]) {
@@ -246,6 +341,8 @@ class SahkarAiProductTest extends TestCase
             $document->versions()->create([
                 'version' => 1,
                 'status' => 'published',
+                'extraction_status' => 'ok',
+                'interpretation_status' => 'published',
                 'original_path' => 'originals/test.txt',
                 'mime_type' => 'text/plain',
                 'sha256' => hash('sha256', $title),
@@ -506,6 +603,107 @@ class SahkarAiProductTest extends TestCase
         Queue::assertPushed(GenerateInterpretation::class, fn (GenerateInterpretation $job) => $job->documentVersionId === $version->id);
     }
 
+    public function test_extraction_failure_records_its_own_terminal_status_without_starting_interpretation(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        config(['sahkarai.ingestion.storage_disk' => 'local']);
+        [, $version] = $this->documentWithInterpretation();
+        $version->interpretation()->delete();
+        $version->update([
+            'status' => 'acquired',
+            'extraction_status' => 'pending',
+            'interpretation_status' => 'pending',
+            'mime_type' => 'image/png',
+        ]);
+        Storage::disk('local')->put($version->original_path, 'not extractable');
+
+        try {
+            (new ExtractDocumentText($version->id))->handle();
+            $this->fail('The extraction job should fail for an unsupported original.');
+        } catch (RuntimeException) {
+            $version->refresh();
+            $this->assertSame('extraction_failed', $version->status);
+            $this->assertSame('failed', $version->extraction_status);
+            $this->assertSame('pending', $version->interpretation_status);
+            Queue::assertNotPushed(GenerateInterpretation::class);
+        }
+    }
+
+    public function test_interpretation_generation_records_a_separate_published_status_for_all_locales(): void
+    {
+        [, $version] = $this->documentWithInterpretation();
+        $version->interpretation()->delete();
+        $version->update([
+            'status' => 'extracted',
+            'extraction_status' => 'ok',
+            'interpretation_status' => 'pending',
+        ]);
+        $responses = collect(SupportedLocale::cases())->map(function (SupportedLocale $locale): array {
+            return [
+                'locale' => $locale->value,
+                'summary' => implode(' ', array_fill(0, 150, "{$locale->value}-word")),
+                'takeaways' => ['Review the publication.', 'Assign an owner.', 'Track implementation.'],
+                'glossary' => [],
+                'deadlines' => [],
+                'applicability_tags' => ['generic'],
+                'effective_date' => null,
+                'document_type' => 'circular',
+            ];
+        })->all();
+        RegulatoryInterpretationAgent::fake($responses)->preventStrayPrompts();
+
+        (new GenerateInterpretation($version->id))->handle(
+            app(GenerateLocaleInterpretation::class),
+            app(NotifyRegulatoryUpdate::class),
+        );
+
+        $version->refresh();
+        $this->assertSame('ok', $version->extraction_status);
+        $this->assertSame('published', $version->interpretation_status);
+        $this->assertSame('published', $version->status);
+        $this->assertEqualsCanonicalizing(
+            collect(SupportedLocale::cases())->pluck('value')->all(),
+            array_keys($version->interpretation->locale_payloads),
+        );
+    }
+
+    public function test_interpretation_generation_marks_terminal_failure_after_three_locale_attempts(): void
+    {
+        Log::spy();
+        [, $version] = $this->documentWithInterpretation();
+        $version->interpretation()->delete();
+        $version->update([
+            'status' => 'extracted',
+            'extraction_status' => 'ok',
+            'interpretation_status' => 'pending',
+        ]);
+        RegulatoryInterpretationAgent::fake(
+            fn () => throw new RuntimeException('provider unavailable'),
+        )->preventStrayPrompts();
+        $job = new GenerateInterpretation($version->id);
+
+        foreach ([1, 2, 3] as $attempt) {
+            try {
+                $job->handle(app(GenerateLocaleInterpretation::class), app(NotifyRegulatoryUpdate::class));
+                $this->assertSame(3, $attempt);
+            } catch (RuntimeException $exception) {
+                $this->assertLessThan(3, $attempt);
+                $this->assertSame('One or more locales require another generation attempt.', $exception->getMessage());
+            }
+        }
+
+        $version->refresh();
+        $this->assertSame('ok', $version->extraction_status);
+        $this->assertSame('failed', $version->interpretation_status);
+        $this->assertSame('interpretation_failed', $version->status);
+        $this->assertSame('failed', $version->interpretation->status);
+        $this->assertSame(
+            ['en' => 3, 'hi' => 3, 'gu' => 3, 'mr' => 3],
+            $version->interpretation->locale_attempts,
+        );
+    }
+
     public function test_partial_poll_records_the_source_document_that_failed_acquisition(): void
     {
         Log::spy();
@@ -627,6 +825,8 @@ class SahkarAiProductTest extends TestCase
             'version' => 2,
             'supersedes_id' => $prior->id,
             'status' => 'published',
+            'extraction_status' => 'ok',
+            'interpretation_status' => 'published',
             'original_path' => 'originals/test-v2.txt',
             'mime_type' => 'text/plain',
             'sha256' => hash('sha256', (string) Str::uuid()),
@@ -691,6 +891,8 @@ class SahkarAiProductTest extends TestCase
             'version' => 2,
             'supersedes_id' => $prior->id,
             'status' => 'published',
+            'extraction_status' => 'ok',
+            'interpretation_status' => 'published',
             'original_path' => 'originals/test-v2.txt',
             'mime_type' => 'text/plain',
             'sha256' => hash('sha256', (string) Str::uuid()),
@@ -822,6 +1024,257 @@ class SahkarAiProductTest extends TestCase
             ->assertRedirect(route('ops.dashboard'));
     }
 
+    public function test_expired_account_purge_removes_personal_data_and_anonymizes_retained_issue(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2()->create(['credits_balance' => 10]);
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+        $message = $chat->messages()->create(['role' => 'user', 'content' => 'Private question', 'token_count' => 2]);
+        $user->creditLedger()->create([
+            'amount' => -1,
+            'balance_after' => 9,
+            'reason' => 'debit_message',
+            'idempotency_key' => 'purge-test-debit',
+            'subject_type' => $message->getMorphClass(),
+            'subject_id' => $message->id,
+        ]);
+        $notification = ProductNotification::create([
+            'user_id' => $user->id,
+            'type' => 'regulatory_update',
+            'title' => 'Private notification',
+            'body' => 'Private body',
+        ]);
+        $issue = IssueReport::create([
+            'user_id' => $user->id,
+            'interpretation_id' => $version->interpretation->id,
+            'document_version_id' => $version->id,
+            'locale' => 'en',
+            'category' => 'inaccurate',
+            'details' => 'Retain this report without its reporter.',
+        ]);
+        $user->update(['hard_delete_at' => now()->subSecond()]);
+        $user->delete();
+
+        (new PurgeExpiredAccounts)->handle();
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('chats', ['id' => $chat->id]);
+        $this->assertDatabaseMissing('chat_messages', ['id' => $message->id]);
+        $this->assertDatabaseMissing('credit_ledger', ['user_id' => $user->id]);
+        $this->assertDatabaseMissing('product_notifications', ['id' => $notification->id]);
+        $this->assertDatabaseHas('issue_reports', ['id' => $issue->id, 'user_id' => null]);
+    }
+
+    public function test_tier_two_account_settings_expose_only_the_owners_credit_ledger(): void
+    {
+        $alice = User::factory()->tier2()->create(['credits_balance' => 9]);
+        $bob = User::factory()->tier2()->create(['credits_balance' => 50]);
+        $aliceEntry = $alice->creditLedger()->create([
+            'amount' => -1,
+            'balance_after' => 9,
+            'reason' => 'debit_message',
+            'idempotency_key' => 'alice-ledger-entry',
+        ]);
+        $bobEntry = $bob->creditLedger()->create([
+            'amount' => 50,
+            'balance_after' => 50,
+            'reason' => 'adjustment',
+            'idempotency_key' => 'bob-ledger-entry',
+        ]);
+
+        $this->actingAs($alice)->get(route('profile.edit'))
+            ->assertInertia(fn ($page) => $page
+                ->has('creditLedger', 1)
+                ->where('creditLedger.0.id', $aliceEntry->id)
+                ->where('creditLedger.0.amount', -1)
+                ->where('creditLedger.0.balance_after', 9)
+                ->where('creditLedger.0.reason', 'debit_message'));
+
+        $this->assertNotSame($aliceEntry->id, $bobEntry->id);
+    }
+
+    public function test_notification_centre_read_actions_are_owner_scoped_and_read_all_is_complete(): void
+    {
+        $alice = User::factory()->tier1()->create();
+        $bob = User::factory()->tier1()->create();
+        $first = ProductNotification::create([
+            'user_id' => $alice->id, 'type' => 'regulatory_update', 'title' => 'First', 'body' => 'First update.',
+        ]);
+        $second = ProductNotification::create([
+            'user_id' => $alice->id, 'type' => 'regulatory_update', 'title' => 'Second', 'body' => 'Second update.',
+        ]);
+        $foreign = ProductNotification::create([
+            'user_id' => $bob->id, 'type' => 'regulatory_update', 'title' => 'Private', 'body' => 'Bob update.',
+        ]);
+
+        $this->actingAs($alice)->patch(route('notifications.read', $foreign))->assertForbidden();
+        $this->assertNull($foreign->refresh()->read_at);
+
+        $this->actingAs($alice)->patch(route('notifications.read', $first))->assertRedirect();
+        $this->assertNotNull($first->refresh()->read_at);
+        $this->assertNull($second->refresh()->read_at);
+
+        $this->actingAs($alice)->patch(route('notifications.read-all'))->assertRedirect();
+        $this->assertNotNull($second->refresh()->read_at);
+        $this->assertNull($foreign->refresh()->read_at);
+    }
+
+    public function test_chat_exports_cover_all_formats_statuses_metadata_and_ownership(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $alice = User::factory()->tier2()->create();
+        $bob = User::factory()->tier2()->create();
+        $chat = Chat::create([
+            'user_id' => $alice->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+            'locale' => 'gu',
+            'status' => 'closed_context_full',
+            'closed_at' => now(),
+        ]);
+        $chat->messages()->create([
+            'role' => 'assistant',
+            'content' => 'The answer is grounded in the selected revision.',
+            'metadata' => ['insight' => ['kind' => 'deadline', 'value' => '2026-08-01']],
+        ]);
+
+        $json = $this->actingAs($alice)->get(route('chats.export', [$chat, 'json']))
+            ->assertOk()
+            ->assertHeader('content-disposition', "attachment; filename=sahkarai-chat-{$chat->id}.json")
+            ->assertJsonPath('chat.status', 'closed_context_full')
+            ->assertJsonPath('chat.document_version_id', $version->id)
+            ->assertJsonPath('document_version.source_document_id', $document->source_document_id)
+            ->assertJsonPath('messages.0.content', 'The answer is grounded in the selected revision.')
+            ->assertJsonPath('insights.0.kind', 'deadline');
+        $this->assertSame('gu', $json->json('chat.locale'));
+
+        $this->actingAs($alice)->get(route('chats.export', [$chat, 'md']))
+            ->assertOk()->assertHeader('content-type', 'text/markdown; charset=UTF-8')
+            ->assertSee('The answer is grounded in the selected revision.');
+        $pdf = $this->actingAs($alice)->get(route('chats.export', [$chat, 'pdf']))
+            ->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
+
+        $this->actingAs($bob)->get(route('chats.export', [$chat, 'json']))->assertForbidden();
+        $this->actingAs($alice)->get(route('chats.export', [$chat, 'xml']))->assertUnprocessable();
+    }
+
+    public function test_deferred_downgrade_can_be_resumed_or_applied_at_the_anniversary(): void
+    {
+        Carbon::setTestNow('2026-05-15 10:00:00');
+        $user = User::factory()->tier2(150)->create();
+        $subscription = $user->subscription()->create([
+            'provider_subscription_id' => 'sub_deferred',
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => Carbon::parse('2026-05-01'),
+            'current_period_end' => Carbon::parse('2026-06-01'),
+        ]);
+        $gateway = Mockery::mock(BillingGateway::class);
+        $gateway->expects('changePlan')->withArgs(fn ($actual, $tier, $atCycleEnd) => $actual->is($subscription)
+            && $tier === Tier::Tier1 && $atCycleEnd)->andReturn(['id' => 'sub_deferred', 'scheduled' => true]);
+        $this->app->instance(BillingGateway::class, $gateway);
+
+        $this->actingAs($user)->post(route('billing.subscribe'), ['tier' => 'tier_1'])->assertSessionHasNoErrors();
+        $this->assertSame(Tier::Tier2, $user->refresh()->tier);
+        $this->assertSame(150, $user->credits_balance);
+        $this->assertSame(Tier::Tier1, $subscription->refresh()->pending_tier);
+        $this->assertTrue($subscription->cancel_at->equalTo(Carbon::parse('2026-06-01')));
+
+        $resumeGateway = Mockery::mock(BillingGateway::class);
+        $resumeGateway->expects('changePlan')->withArgs(fn ($actual, $tier, $atCycleEnd) => $actual->is($subscription)
+            && $tier === Tier::Tier2 && ! $atCycleEnd)->andReturn(['id' => 'sub_deferred', 'scheduled' => false]);
+        $this->app->instance(BillingGateway::class, $resumeGateway);
+        $this->actingAs($user)->post(route('billing.resume'))->assertSessionHasNoErrors();
+        $this->assertNull($subscription->refresh()->pending_tier);
+
+        $subscription->update(['pending_tier' => Tier::Tier1, 'cancel_at' => Carbon::parse('2026-06-01')]);
+        Carbon::setTestNow('2026-06-01 00:00:00');
+        Notification::fake();
+        (new ApplyPendingSubscriptionChanges)->handle();
+
+        $this->assertSame(Tier::Tier1, $user->refresh()->tier);
+        $this->assertSame(0, $user->credits_balance);
+        $this->assertSame(Tier::Tier1, $subscription->refresh()->tier);
+        $this->assertNull($subscription->pending_tier);
+        $this->assertDatabaseHas('product_notifications', ['user_id' => $user->id, 'type' => 'billing_downgraded']);
+        $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'in_app', 'status' => 'delivered']);
+        $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'email', 'status' => 'queued']);
+    }
+
+    public function test_reconciliation_records_provider_drift_and_exposes_an_ops_alert(): void
+    {
+        $user = User::factory()->tier1()->create();
+        $subscription = $user->subscription()->create([
+            'provider_subscription_id' => 'sub_drift',
+            'tier' => Tier::Tier1,
+            'status' => SubscriptionStatus::Cancelled,
+        ]);
+        $gateway = Mockery::mock(BillingGateway::class);
+        $gateway->expects('fetchSubscription')->withArgs(fn ($actual) => $actual->is($subscription))
+            ->andReturn(['id' => 'sub_drift', 'status' => 'active']);
+
+        (new ReconcileSubscriptions)->handle($gateway);
+
+        $drift = ReconciliationDrift::sole();
+        $this->assertSame('cancelled', $drift->local_value);
+        $this->assertSame('active', $drift->provider_value);
+        $this->assertDatabaseHas('ops_alerts', ['type' => 'subscription_drift', 'severity' => 'warning']);
+    }
+
+    public function test_signed_restore_works_only_inside_the_deletion_window(): void
+    {
+        $user = User::factory()->create(['hard_delete_at' => now()->addDays(30)]);
+        $user->delete();
+        $restoreUrl = URL::temporarySignedRoute('account.restore', now()->addHour(), ['user' => $user->id]);
+
+        $this->get($restoreUrl)->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user->refresh());
+        $this->assertNull($user->deleted_at);
+        $this->assertNull($user->hard_delete_at);
+
+        auth()->logout();
+        $expired = User::factory()->create(['hard_delete_at' => now()->subSecond()]);
+        $expired->delete();
+        $expiredUrl = URL::temporarySignedRoute('account.restore', now()->addHour(), ['user' => $expired->id]);
+        $this->get($expiredUrl)->assertGone();
+    }
+
+    public function test_chat_messages_and_credit_ledger_entries_are_immutable(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2()->create();
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+        $message = ChatMessage::create(['chat_id' => $chat->id, 'role' => 'user', 'content' => 'Original']);
+        $entry = CreditLedger::create([
+            'user_id' => $user->id, 'amount' => -1, 'balance_after' => 199,
+            'reason' => 'debit_message', 'idempotency_key' => 'immutable-ledger',
+        ]);
+
+        try {
+            $message->update(['content' => 'Tampered']);
+            $this->fail('Expected a chat message update to be rejected.');
+        } catch (\LogicException $exception) {
+            $this->assertSame('Chat messages are immutable.', $exception->getMessage());
+        }
+        try {
+            $entry->delete();
+            $this->fail('Expected a ledger delete to be rejected.');
+        } catch (\LogicException $exception) {
+            $this->assertSame('Credit ledger entries are immutable.', $exception->getMessage());
+        }
+        $this->assertSame('Original', $message->fresh()->content);
+        $this->assertNotNull($entry->fresh());
+    }
+
     /** @return array{RegulatoryDocument, DocumentVersion} */
     private function documentWithInterpretation(): array
     {
@@ -831,7 +1284,8 @@ class SahkarAiProductTest extends TestCase
             'applicability' => Applicability::Generic, 'published_at' => now(),
         ]);
         $version = $document->versions()->create([
-            'version' => 1, 'status' => 'published', 'original_path' => 'originals/test.txt',
+            'version' => 1, 'status' => 'published', 'extraction_status' => 'ok', 'interpretation_status' => 'published',
+            'original_path' => 'originals/test.txt',
             'mime_type' => 'text/plain', 'sha256' => hash('sha256', (string) Str::uuid()),
             'extracted_text' => 'The source document requires an implementation review.', 'acquired_at' => now(),
         ]);

@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
  * @property int|null $supersedes_id
  * @property int $version
  * @property string $status
+ * @property string $extraction_status
+ * @property string $interpretation_status
  * @property string $original_path
  * @property string|null $original_filename
  * @property string|null $mime_type

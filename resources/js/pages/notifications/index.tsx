@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Bell, CheckCheck, Mail, Radio } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ type Prefs = {
     source_rbi: boolean;
     source_income_tax: boolean;
     source_gst: boolean;
-    email_enabled: boolean;
     source_rbi_cadence: string;
     source_income_tax_cadence: string;
     source_gst_cadence: string;
@@ -200,29 +199,11 @@ export default function Notifications({
                                         </div>
                                     ))}
                                 </fieldset>
-                                <fieldset>
-                                    <legend className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                        Channels
-                                    </legend>
-                                    <p className="flex items-center gap-2 py-2 text-sm">
-                                        <Radio className="size-4" /> In-app ·
-                                        always real-time
-                                    </p>
-                                    <label className="flex items-center gap-2 py-2 text-sm">
-                                        <Mail className="size-4" />
-                                        <input
-                                            type="checkbox"
-                                            checked={form.data.email_enabled}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'email_enabled',
-                                                    e.target.checked,
-                                                )
-                                            }
-                                        />{' '}
-                                        Email
-                                    </label>
-                                </fieldset>
+                                <p className="rounded-xl bg-muted/60 p-3 text-xs text-muted-foreground">
+                                    In-app updates arrive immediately. Email is
+                                    delivered using the cadence selected for
+                                    each source.
+                                </p>
                                 <Button
                                     className="w-full"
                                     disabled={form.processing}

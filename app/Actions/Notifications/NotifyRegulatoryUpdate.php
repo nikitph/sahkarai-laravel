@@ -13,7 +13,7 @@ class NotifyRegulatoryUpdate
     public function handle(DocumentVersion $version): void
     {
         $document = $version->document;
-        if ($document->is_backfill || ! in_array($version->status, ['published', 'interpretation_partial'], true)) {
+        if ($document->is_backfill || ! in_array($version->interpretation_status, ['published', 'partial'], true)) {
             return;
         }
 
@@ -69,7 +69,7 @@ class NotifyRegulatoryUpdate
                     'channel' => 'in_app',
                 ], ['status' => 'delivered', 'locale' => $user->locale, 'delivered_at' => now()]);
 
-                if ($preferences->email_enabled && $cadence->value === 'immediate') {
+                if ($cadence->value === 'immediate') {
                     $user->notify((new RegulatoryUpdateMail($document))->locale($user->locale->value));
                     NotificationDelivery::query()->firstOrCreate([
                         'product_notification_id' => $notification->getKey(),

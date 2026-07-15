@@ -63,7 +63,7 @@ Workers must be running for acquisition, extraction, interpretation, notificatio
 
 ## Architecture and specifications
 
-Read [docs/START-HERE.md](docs/START-HERE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/SPEC-COVERAGE.md](docs/SPEC-COVERAGE.md) before changing a domain boundary. The source requirements live in `specs/**/*.feature`; TypeScript helper files under `specs` are deliberately ignored.
+Read [docs/START-HERE.md](docs/START-HERE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SPEC-COVERAGE.md](docs/SPEC-COVERAGE.md), and the scenario ledger in [docs/SPEC-EVIDENCE.md](docs/SPEC-EVIDENCE.md) before changing a domain boundary. The source requirements live in `specs/**/*.feature`; TypeScript helper files under `specs` are deliberately ignored.
 
 The specs mention Supabase sessions, dormant TOTP, and database RLS. This application deliberately retains the stronger initializer authentication surface (Laravel sessions, optional passkeys and 2FA) and enforces product ownership through policies, owner-scoped relationships, authorization tests, and transactional write actions. There is no admin impersonation or chat-body access.
 

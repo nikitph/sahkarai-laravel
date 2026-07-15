@@ -56,6 +56,7 @@ class ExtractDocumentText implements ShouldQueue
             }
             $version->update([
                 'status' => 'extracted',
+                'extraction_status' => 'ok',
                 'extracted_text' => $text,
                 'extracted_path' => $extractedPath,
                 'extracted_at' => now(),
@@ -63,7 +64,11 @@ class ExtractDocumentText implements ShouldQueue
             ]);
             GenerateInterpretation::dispatch($version->getKey());
         } catch (Throwable $exception) {
-            $version->update(['status' => 'extraction_failed', 'extraction_error' => $exception->getMessage()]);
+            $version->update([
+                'status' => 'extraction_failed',
+                'extraction_status' => 'failed',
+                'extraction_error' => $exception->getMessage(),
+            ]);
             throw $exception;
         }
     }

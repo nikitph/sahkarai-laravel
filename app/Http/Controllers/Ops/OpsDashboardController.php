@@ -6,7 +6,6 @@ use App\Enums\RegulatorySource;
 use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\DocumentVersion;
-use App\Models\Interpretation;
 use App\Models\IssueReport;
 use App\Models\OpsAlert;
 use App\Models\PollRun;
@@ -26,8 +25,8 @@ class OpsDashboardController extends Controller
                 'last_failure' => PollRun::query()->where('source', $source)->where('status', 'failed')->latest('completed_at')->first(),
             ]),
             'counts' => [
-                'extractionFailures' => DocumentVersion::query()->where('status', 'extraction_failed')->count(),
-                'interpretationFailures' => Interpretation::query()->where('status', 'failed')->count(),
+                'extractionFailures' => DocumentVersion::query()->where('extraction_status', 'failed')->count(),
+                'interpretationFailures' => DocumentVersion::query()->where('interpretation_status', 'failed')->count(),
                 'openIssues' => IssueReport::query()->where('status', 'open')->count(),
                 'openAlerts' => OpsAlert::query()->whereNull('resolved_at')->count(),
                 'totalChats' => Chat::query()->count(),

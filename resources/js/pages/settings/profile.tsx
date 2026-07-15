@@ -16,8 +16,16 @@ type PageProps = {
 
 export default function Profile({
     subscription,
+    creditLedger,
 }: {
     subscription: { current_period_end: string | null } | null;
+    creditLedger: {
+        id: number;
+        amount: number;
+        balance_after: number;
+        reason: string;
+        created_at: string;
+    }[];
 }) {
     const { auth } = usePage<PageProps>().props;
 
@@ -161,6 +169,52 @@ export default function Profile({
                 <Button asChild variant="outline">
                     <Link href="/billing">Change plan</Link>
                 </Button>
+                {auth.user.tier === 'tier_2' && creditLedger.length > 0 && (
+                    <Card className="rounded-2xl">
+                        <CardContent className="p-5">
+                            <p className="mb-3 text-sm font-semibold">
+                                Recent credit activity
+                            </p>
+                            <div className="divide-y text-sm">
+                                {creditLedger.map((entry) => (
+                                    <div
+                                        key={entry.id}
+                                        className="flex items-center justify-between gap-4 py-3"
+                                    >
+                                        <div>
+                                            <p className="capitalize">
+                                                {entry.reason.replaceAll(
+                                                    '_',
+                                                    ' ',
+                                                )}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(
+                                                    entry.created_at,
+                                                ).toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p
+                                                className={
+                                                    entry.amount < 0
+                                                        ? 'text-amber-700'
+                                                        : 'text-emerald-700'
+                                                }
+                                            >
+                                                {entry.amount > 0 ? '+' : ''}
+                                                {entry.amount}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Balance {entry.balance_after}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             <DeleteUser />

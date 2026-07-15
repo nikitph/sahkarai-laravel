@@ -62,7 +62,8 @@ class DatabaseSeeder extends Seeder
             Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($path, $text);
             Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($extractedPath, $text);
             $version = $document->versions()->firstOrCreate(['version' => 1], [
-                'status' => 'published', 'original_path' => $path, 'original_filename' => str($title)->slug().'.txt',
+                'status' => 'published', 'extraction_status' => 'ok', 'interpretation_status' => 'published',
+                'original_path' => $path, 'original_filename' => str($title)->slug().'.txt',
                 'mime_type' => 'text/plain', 'size_bytes' => strlen($text), 'sha256' => hash('sha256', $text),
                 'extracted_text' => $text, 'extracted_path' => $extractedPath, 'acquired_at' => now(), 'extracted_at' => now(),
             ]);

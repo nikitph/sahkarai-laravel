@@ -44,7 +44,6 @@ class NotificationController extends Controller
             'source_rbi' => ['required', 'boolean'],
             'source_income_tax' => ['required', 'boolean'],
             'source_gst' => ['required', 'boolean'],
-            'email_enabled' => ['required', 'boolean'],
             'source_rbi_cadence' => ['required', 'in:immediate,daily_digest,weekly_digest'],
             'source_income_tax_cadence' => ['required', 'in:immediate,daily_digest,weekly_digest'],
             'source_gst_cadence' => ['required', 'in:immediate,daily_digest,weekly_digest'],

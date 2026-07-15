@@ -20,10 +20,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => false,
             'status' => $request->session()->get('status'),
-            'subscription' => $request->user()->subscription,
+            'subscription' => $user->subscription,
+            'creditLedger' => $user->tier->canChat()
+                ? $user->creditLedger()->latest()->limit(20)->get(['id', 'amount', 'balance_after', 'reason', 'created_at'])
+                : [],
         ]);
     }
 

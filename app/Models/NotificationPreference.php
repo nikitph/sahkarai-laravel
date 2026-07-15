@@ -11,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $source_rbi
  * @property bool $source_income_tax
  * @property bool $source_gst
- * @property bool $in_app_enabled
- * @property bool $email_enabled
  * @property NotificationCadence $source_rbi_cadence
  * @property NotificationCadence $source_income_tax_cadence
  * @property NotificationCadence $source_gst_cadence
@@ -27,8 +25,6 @@ class NotificationPreference extends Model
             'source_rbi' => 'boolean',
             'source_income_tax' => 'boolean',
             'source_gst' => 'boolean',
-            'in_app_enabled' => 'boolean',
-            'email_enabled' => 'boolean',
             'source_rbi_cadence' => NotificationCadence::class,
             'source_income_tax_cadence' => NotificationCadence::class,
             'source_gst_cadence' => NotificationCadence::class,

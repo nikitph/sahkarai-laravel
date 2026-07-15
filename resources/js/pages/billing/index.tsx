@@ -7,6 +7,8 @@ import {
     ShieldCheck,
     Sparkles,
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,14 +22,104 @@ type Subscription = {
     cancel_at: string | null;
     provider_subscription_id: string | null;
 };
+type Checkout = {
+    key: string;
+    subscription_id: string;
+    tier: string;
+    name: string;
+    email: string;
+} | null;
+
+declare global {
+    interface Window {
+        Razorpay?: new (options: Record<string, unknown>) => {
+            open: () => void;
+            on: (event: string, callback: () => void) => void;
+        };
+    }
+}
+
 export default function Billing({
     subscription,
     plans,
+    checkout,
 }: {
     subscription: Subscription;
     plans: Record<string, { monthly_price: number; monthly_credits: number }>;
+    checkout: Checkout;
 }) {
     const t = useT();
+
+    useEffect(() => {
+        if (!checkout) {
+            return;
+        }
+
+        const openCheckout = () => {
+            if (!window.Razorpay) {
+                toast.error('Unable to load Razorpay Checkout. Please retry.');
+
+                return;
+            }
+
+            const modal = new window.Razorpay({
+                key: checkout.key,
+                subscription_id: checkout.subscription_id,
+                name: 'SahkarAI',
+                description: `${checkout.tier.replace('_', ' ')} monthly subscription`,
+                prefill: { name: checkout.name, email: checkout.email },
+                theme: { color: '#4f46e5' },
+                handler: () => {
+                    toast.success(
+                        'Payment received. Access will activate after secure webhook confirmation.',
+                    );
+                },
+                modal: {
+                    ondismiss: () =>
+                        toast.info(
+                            'Checkout closed. Your current plan is unchanged.',
+                        ),
+                },
+            });
+
+            modal.on('payment.failed', () =>
+                toast.error(
+                    'Payment was not completed. Your current plan is unchanged.',
+                ),
+            );
+            modal.open();
+        };
+
+        const existing = document.querySelector<HTMLScriptElement>(
+            'script[data-razorpay-checkout]',
+        );
+
+        if (existing) {
+            if (window.Razorpay) {
+                openCheckout();
+            } else {
+                existing.addEventListener('load', openCheckout, { once: true });
+            }
+
+            return;
+        }
+
+        const script = document.createElement('script');
+
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.dataset.razorpayCheckout = 'true';
+        script.addEventListener('load', openCheckout, { once: true });
+        script.addEventListener(
+            'error',
+            () =>
+                toast.error('Unable to load Razorpay Checkout. Please retry.'),
+            { once: true },
+        );
+
+        document.head.appendChild(script);
+    }, [checkout]);
+
     const tiers = [
         {
             id: 'free',
@@ -95,6 +187,13 @@ export default function Billing({
                         >
                             Keep current plan
                         </Button>
+                    </div>
+                )}
+                {subscription.tier === 'tier_1' && (
+                    <div className="mx-auto mb-6 max-w-3xl rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-center text-sm text-indigo-950 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-100">
+                        Upgrading to Intelligence is prorated for the remainder
+                        of your current billing cycle. Prorated chat credits are
+                        granted only after Razorpay confirms payment.
                     </div>
                 )}
                 <div className="grid gap-5 lg:grid-cols-3">

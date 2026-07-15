@@ -21,7 +21,7 @@ class SendNotificationDigest implements ShouldQueue
             ->whereIn('tier', ['tier_1', 'tier_2'])
             ->with('notificationPreference')
             ->each(function (User $user): void {
-                if (! $user->notificationPreference?->email_enabled) {
+                if (! $user->notificationPreference) {
                     return;
                 }
                 $since = $this->cadence === 'weekly_digest' ? now()->subWeek() : now()->subDay();

@@ -81,7 +81,10 @@ class GenerateInterpretation implements ShouldQueue
             'published_at' => in_array($status, ['published', 'partial'], true) ? now() : null,
         ]);
 
-        $version->update(['status' => in_array($status, ['published', 'partial'], true) ? 'published' : "interpretation_{$status}"]);
+        $version->update([
+            'status' => in_array($status, ['published', 'partial'], true) ? 'published' : "interpretation_{$status}",
+            'interpretation_status' => $status,
+        ]);
 
         if (in_array($status, ['published', 'partial'], true) && $interpretation->wasChanged('published_at')) {
             $notify->handle($version->fresh(['document']));

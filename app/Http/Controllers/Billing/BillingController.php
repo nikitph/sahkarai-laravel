@@ -23,6 +23,7 @@ class BillingController extends Controller
             'subscription' => $subscription,
             'plans' => config('sahkarai.tiers'),
             'razorpayKey' => config('sahkarai.razorpay.key_id'),
+            'checkout' => $request->session()->pull('razorpay_checkout'),
         ]);
     }
 
@@ -53,11 +54,20 @@ class BillingController extends Controller
             ]);
         } else {
             $provider = $gateway->createSubscription($request->user(), $tier);
+            $providerId = (string) ($provider['id'] ?? '');
+            abort_if($providerId === '', 502, 'Razorpay did not return a subscription identifier.');
             $subscription->update([
-                'provider_subscription_id' => $provider['id'],
+                'provider_subscription_id' => $providerId,
                 'tier' => $tier,
                 'status' => SubscriptionStatus::Pending,
                 'provider_payload' => $provider,
+            ]);
+            $request->session()->put('razorpay_checkout', [
+                'key' => (string) config('sahkarai.razorpay.key_id'),
+                'subscription_id' => $providerId,
+                'tier' => $tier->value,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
             ]);
         }
 
