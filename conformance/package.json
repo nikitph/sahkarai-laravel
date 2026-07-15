@@ -1,0 +1,10 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "check:ws": "node ws-check.js"
+    },
+    "dependencies": {
+        "ws": "^8.18.0"
+    }
+}

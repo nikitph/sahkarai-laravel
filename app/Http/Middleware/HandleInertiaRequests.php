@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Permission;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -41,7 +42,32 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'organization' => fn () => $this->organizationProps($request),
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function organizationProps(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $current = $user->currentOrganization;
+
+        return [
+            'current' => $current,
+            'all' => $user->organizations()->get(['organizations.id', 'name', 'slug']),
+            'permissions' => $current
+                ? collect(Permission::cases())->filter(fn (Permission $permission) => $user->hasPermission($permission, $current))->map->value->values()
+                : [],
         ];
     }
 }

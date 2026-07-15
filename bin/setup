@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+set -eu
+
+[ -f .env ] || cp .env.example .env
+
+if ! grep -q '^APP_KEY=base64:' .env; then
+    app_key="base64:$(openssl rand -base64 32)"
+    sed -i.bak "s#^APP_KEY=.*#APP_KEY=${app_key}#" .env
+    rm -f .env.bak
+fi
+
+docker compose build
+docker compose up -d postgres redis web
+docker compose exec web php artisan migrate --force
+docker compose exec web php artisan db:seed --force
+docker compose up -d worker scheduler reverb
+
+printf '\nReady: http://localhost:8002\nLogin: demo@example.com / password\n'

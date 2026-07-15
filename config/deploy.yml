@@ -1,0 +1,98 @@
+# Kamal deploy for the runtime conformance harness.
+# Deploys the ALREADY-PUBLISHED multi-arch image from GHCR (no build here).
+service: sahkarai-laravel
+# Runtime >=0.2.0-dev ships HEALTHCHECK NONE, so non-web roles need no workaround.
+image: nikitph/sahkarai-laravel
+
+registry:
+  server: ghcr.io
+  username: nikitph
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# We deploy a prebuilt image; arch matters because the droplet is amd64.
+builder:
+  arch: amd64
+
+servers:
+  web:
+    hosts:
+      - YOUR_SERVER_IP
+    # Only the web role migrates. Kamal boots the primary web role to healthy
+    # before any other role, so the schema exists before workers start — no
+    # pre-deploy hook, no crash-looping workers.
+    # ISOLATION stays false: `migrate --isolated` locks via the cache_locks TABLE,
+    # which the migrations themselves create, so on a fresh DB it can never
+    # bootstrap. It would need a shared non-DB lock (Redis).
+    env:
+      clear:
+        AUTORUN_ENABLED: "true"
+        AUTORUN_LARAVEL_MIGRATION: "true"
+        AUTORUN_LARAVEL_MIGRATION_ISOLATION: "false"
+  worker:
+    hosts:
+      - YOUR_SERVER_IP
+    cmd: php artisan queue:work --tries=2 --sleep=1
+    proxy: false
+  scheduler:
+    hosts:
+      - YOUR_SERVER_IP
+    cmd: php artisan schedule:work
+    proxy: false
+
+# kamal-proxy terminates :80 and forwards to the web role's app_port.
+# THE question this test exists to answer: does SSE survive this proxy?
+proxy:
+  ssl: false
+  host: app.YOUR_SERVER_IP.sslip.io
+  app_port: 8080
+  healthcheck:
+    path: /up
+    interval: 3
+    timeout: 20
+
+env:
+  clear:
+    APP_ENV: production
+    APP_DEBUG: "false"
+    APP_URL: http://YOUR_SERVER_IP
+    LOG_CHANNEL: stderr
+    LOG_STACK: stderr
+    LOG_LEVEL: debug
+
+    DB_CONNECTION: pgsql
+    DB_HOST: sahkarai-laravel-postgres # accessory container name on the kamal network
+    DB_PORT: "5432"
+    DB_DATABASE: app
+    DB_USERNAME: app
+
+    SESSION_DRIVER: database
+    QUEUE_CONNECTION: database
+    CACHE_STORE: database
+
+    BROADCAST_CONNECTION: reverb
+    REVERB_APP_ID: conformance
+    REVERB_APP_KEY: conformancekey
+    REVERB_HOST: ws.YOUR_SERVER_IP.sslip.io   # via kamal-proxy
+    REVERB_PORT: "80"
+    REVERB_SCHEME: http
+
+    PHP_OPCACHE_VALIDATE_TIMESTAMPS: "0"   # production: full opcache benefit
+    HEALTHCHECK_PATH: /up
+  secret:
+    - APP_KEY
+    - DB_PASSWORD
+    - REVERB_APP_SECRET
+
+accessories:
+  postgres:
+    image: postgres:17-alpine
+    host: YOUR_SERVER_IP
+    env:
+      clear:
+        POSTGRES_DB: app
+        POSTGRES_USER: app
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data

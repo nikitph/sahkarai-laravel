@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "company/sahkarai-laravel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "The SahkarAI Laravel application.",
     "keywords": [
         "laravel",
         "framework"
@@ -11,15 +11,17 @@
     "require": {
         "php": "^8.3",
         "inertiajs/inertia-laravel": "^3.0",
-        "laravel/chisel": "^0.1.0",
+        "laravel/ai": "^0.7",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
+        "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
         "larastan/larastan": "^3.9",
+        "laravel/boost": "^2.4",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
@@ -66,8 +68,13 @@
             "npm run types:check",
             "@test"
         ],
+        "verify": [
+            "Composer\\Config::disableProcessTimeout",
+            "@ci:check",
+            "npm run build"
+        ],
         "types:check": [
-            "phpstan analyse"
+            "phpstan analyse --memory-limit=512M"
         ],
         "test": [
             "@php artisan config:clear --ansi",
@@ -96,11 +103,7 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": [],
-            "installer": {
-                "post-create-project": [
-                ]
-            }
+            "dont-discover": []
         }
     },
     "config": {

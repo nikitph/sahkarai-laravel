@@ -1,0 +1,59 @@
+# Reverb as its OWN Kamal service, routed through kamal-proxy on a ws. subdomain —
+# i.e. how production actually runs it. This is what proves the WebSocket UPGRADE
+# survives the proxy (publishing Reverb on a host port bypasses the proxy entirely
+# and proves nothing about it).
+#
+# Deploy:  kamal deploy -c config/deploy.reverb.yml --version=0.1.0-dev --skip-push
+service: sahkarai-laravel-reverb
+image: nikitph/sahkarai-laravel
+
+registry:
+  server: ghcr.io
+  username: nikitph
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+
+servers:
+  # role must be "web" for kamal-proxy to route to it
+  web:
+    hosts:
+      - YOUR_SERVER_IP
+    cmd: php artisan reverb:start --host=0.0.0.0 --port=8080
+
+proxy:
+  ssl: false
+  host: ws.YOUR_SERVER_IP.sslip.io
+  app_port: 8080
+  healthcheck:
+    path: /up          # Reverb answers /up with 200 — verified
+    interval: 3
+    timeout: 20
+
+env:
+  clear:
+    APP_ENV: production
+    APP_DEBUG: "false"
+    LOG_CHANNEL: stderr
+    LOG_STACK: stderr
+
+    DB_CONNECTION: pgsql
+    DB_HOST: sahkarai-laravel-postgres # shared kamal network with the app's accessory
+    DB_PORT: "5432"
+    DB_DATABASE: app
+    DB_USERNAME: app
+    CACHE_STORE: database
+    SESSION_DRIVER: database
+    QUEUE_CONNECTION: database
+
+    BROADCAST_CONNECTION: reverb
+    REVERB_APP_ID: conformance
+    REVERB_APP_KEY: conformancekey
+    REVERB_SERVER_HOST: 0.0.0.0
+    REVERB_SERVER_PORT: "8080"
+  secret:
+    - APP_KEY
+    - DB_PASSWORD
+    - REVERB_APP_SECRET

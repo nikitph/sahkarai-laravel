@@ -1,0 +1,33 @@
+# never bake secrets or local state into the image
+.env
+.env.*
+!.env.example
+
+# provided by build stages
+node_modules
+vendor
+public/build
+
+# local / build-host only
+.git
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
+conformance
+tests
+phpunit.xml
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+database/database.sqlite
+
+# CRITICAL: never bake the dev-time package-discovery cache into a --no-dev image.
+# packages.php/services.php generated with dev deps reference dev-only providers
+# (e.g. Laravel\Pail\PailServiceProvider) which do not exist in production ->
+# every role crashes on boot. Laravel regenerates these at runtime.
+bootstrap/cache/*
+
+# never ship deploy secrets
+.kamal/secrets
