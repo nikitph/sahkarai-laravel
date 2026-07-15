@@ -22,6 +22,20 @@ class ExtractDocumentText implements ShouldQueue
     public function handle(): void
     {
         $version = DocumentVersion::findOrFail($this->documentVersionId);
+        if ($version->extracted_at !== null && filled($version->extracted_text)) {
+            $path = $version->extracted_path ?: $this->artifactPath($version->original_path);
+            $disk = Storage::disk(config('sahkarai.ingestion.storage_disk'));
+            if (! $disk->exists($path)) {
+                if (! $disk->put($path, $version->extracted_text)) {
+                    throw new RuntimeException("Unable to persist the extracted artifact at {$path}.");
+                }
+            }
+            if ($version->extracted_path !== $path) {
+                $version->update(['extracted_path' => $path]);
+            }
+
+            return;
+        }
 
         try {
             $contents = Storage::disk(config('sahkarai.ingestion.storage_disk'))->get($version->original_path);
@@ -36,7 +50,17 @@ class ExtractDocumentText implements ShouldQueue
                 throw new RuntimeException('Text extraction produced no content.');
             }
 
-            $version->update(['status' => 'extracted', 'extracted_text' => $text, 'extracted_at' => now(), 'extraction_error' => null]);
+            $extractedPath = $this->artifactPath($version->original_path);
+            if (! Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($extractedPath, $text)) {
+                throw new RuntimeException("Unable to persist the extracted artifact at {$extractedPath}.");
+            }
+            $version->update([
+                'status' => 'extracted',
+                'extracted_text' => $text,
+                'extracted_path' => $extractedPath,
+                'extracted_at' => now(),
+                'extraction_error' => null,
+            ]);
             GenerateInterpretation::dispatch($version->getKey());
         } catch (Throwable $exception) {
             $version->update(['status' => 'extraction_failed', 'extraction_error' => $exception->getMessage()]);
@@ -47,5 +71,14 @@ class ExtractDocumentText implements ShouldQueue
     private function extractPdf(string $contents): string
     {
         return (new Parser)->parseContent($contents)->getText();
+    }
+
+    private function artifactPath(string $originalPath): string
+    {
+        $relative = str_starts_with($originalPath, 'originals/')
+            ? substr($originalPath, strlen('originals/'))
+            : basename($originalPath);
+
+        return 'extracted/'.preg_replace('/\.[^.\/]+$/', '', $relative).'.txt';
     }
 }

@@ -54,15 +54,19 @@ class DatabaseSeeder extends Seeder
                 'published_at' => now()->subDays($index * 3 + 1), 'effective_at' => now()->addDays(30 - $index),
                 'source_url' => 'https://example.test/regulatory/'.str($sourceId)->slug(),
             ]);
+            $document->update(['applicability_tags' => [$applicability->value]]);
             $text = "{$title}\n\nRegulated entities must review the updated requirements, assign accountable owners, preserve supporting records and complete implementation within the stated transition period. Boards should receive progress reporting and material exceptions should be escalated. This seeded publication exists to exercise the complete SahkarAI product flow.";
-            $path = "originals/{$source->value}/".now()->format('Y/m')."/{$document->getKey()}-v1.txt";
+            $storageId = preg_replace('/[^A-Za-z0-9._-]/', '_', $sourceId);
+            $path = "originals/{$source->storageDirectory()}/".now()->format('Y/m')."/{$storageId}.txt";
+            $extractedPath = "extracted/{$source->storageDirectory()}/".now()->format('Y/m')."/{$storageId}.txt";
             Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($path, $text);
+            Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($extractedPath, $text);
             $version = $document->versions()->firstOrCreate(['version' => 1], [
                 'status' => 'published', 'original_path' => $path, 'original_filename' => str($title)->slug().'.txt',
                 'mime_type' => 'text/plain', 'size_bytes' => strlen($text), 'sha256' => hash('sha256', $text),
-                'extracted_text' => $text, 'acquired_at' => now(), 'extracted_at' => now(),
+                'extracted_text' => $text, 'extracted_path' => $extractedPath, 'acquired_at' => now(), 'extracted_at' => now(),
             ]);
-            $summary = 'This update asks covered co-operative financial institutions to review the revised regulatory expectations, identify the teams and systems affected, and establish a documented implementation plan. Management should allocate clear ownership, retain evidence for each completed control, and escalate gaps that cannot be resolved within the transition period. The board or an appropriate committee should receive concise progress reporting so that delays and material exceptions remain visible. Institutions should read the original publication before acting because applicability can depend on entity type, existing approvals, and the precise facts of a transaction. The interpretation highlights the operational direction of the update while preserving the original document as the authoritative source. Teams should compare current policy, process, technology, reporting, and record-retention arrangements with the publication; record decisions and assumptions; and seek qualified advice where the wording or their circumstances create uncertainty. No requirement should be inferred beyond the source text.';
+            $summary = 'This update asks covered co-operative financial institutions to review the revised regulatory expectations, identify the teams and systems affected, and establish a documented implementation plan. Management should allocate clear ownership, retain evidence for each completed control, and escalate gaps that cannot be resolved within the transition period. The board or an appropriate committee should receive concise progress reporting so that delays and material exceptions remain visible. Institutions should read the original publication before acting because applicability can depend on entity type, existing approvals, and the precise facts of a transaction. The interpretation highlights the operational direction of the update while preserving the original document as the authoritative source. Teams should compare current policy, process, technology, reporting, and record-retention arrangements with the publication; record decisions and assumptions; and seek qualified advice where the wording or their circumstances create uncertainty. No requirement should be inferred beyond the source text. Always verify actions against the publication.';
             $version->interpretation()->firstOrCreate([], [
                 'status' => 'published', 'locale_payloads' => collect(['en', 'hi', 'gu', 'mr'])->mapWithKeys(fn ($locale) => [$locale => [
                     'locale' => $locale, 'summary' => $summary,

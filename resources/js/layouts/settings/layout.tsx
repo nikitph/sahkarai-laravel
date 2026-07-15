@@ -27,6 +27,7 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     { title: 'Plans & billing', href: '/billing', icon: null },
+    { title: 'Notification preferences', href: '/notifications', icon: null },
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {

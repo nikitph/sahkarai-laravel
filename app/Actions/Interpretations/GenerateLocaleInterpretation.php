@@ -7,6 +7,7 @@ use App\Enums\SupportedLocale;
 use App\Models\DocumentVersion;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Laravel\Ai\Responses\StructuredAgentResponse;
 use RuntimeException;
 
 class GenerateLocaleInterpretation
@@ -15,16 +16,16 @@ class GenerateLocaleInterpretation
     public function handle(DocumentVersion $version, SupportedLocale $locale): array
     {
         $response = RegulatoryInterpretationAgent::make()->prompt(
-            "Write the {$locale->name} ({$locale->value}) interpretation of this document.\n\n{$version->extracted_text}",
+            "Write the {$locale->name} ({$locale->value}) interpretation of this document.\n\n{$version->sourceText()}",
             provider: config('sahkarai.ai.provider'),
             model: config('sahkarai.ai.interpretation_model'),
             timeout: 120,
         );
 
-        $payload = json_decode($response->text, true);
-        if (! is_array($payload)) {
-            throw new RuntimeException('The AI provider returned invalid structured JSON.');
+        if (! $response instanceof StructuredAgentResponse) {
+            throw new RuntimeException('The AI provider did not return structured output.');
         }
+        $payload = $response->structured;
 
         $validated = Validator::make($payload, [
             'locale' => ['required', 'in:'.$locale->value],

@@ -25,7 +25,10 @@ class ChatController extends Controller
     public function store(Request $request, RegulatoryDocument $document): RedirectResponse
     {
         $this->authorize('create', Chat::class);
-        $version = $document->latestVersion()->whereNotNull('extracted_text')->firstOrFail();
+        $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
+        $version = isset($validated['version'])
+            ? $document->versions()->whereKey($validated['version'])->whereNotNull('extracted_text')->firstOrFail()
+            : $document->latestVersion()->whereNotNull('extracted_text')->firstOrFail();
         $chat = $request->user()->chats()->create([
             'regulatory_document_id' => $document->getKey(),
             'document_version_id' => $version->getKey(),
@@ -56,5 +59,20 @@ class ChatController extends Controller
         $chat->update(['status' => 'closed_by_user', 'closed_at' => now()]);
 
         return back()->with('success', 'Chat closed. You can still read or export it.');
+    }
+
+    public function restart(Request $request, Chat $chat): RedirectResponse
+    {
+        $this->authorize('view', $chat);
+        $this->authorize('create', Chat::class);
+        abort_unless($chat->status === 'closed_context_full', 422);
+        $fresh = $request->user()->chats()->create([
+            'regulatory_document_id' => $chat->regulatory_document_id,
+            'document_version_id' => $chat->document_version_id,
+            'title' => $chat->title,
+            'locale' => $request->user()->locale,
+        ]);
+
+        return to_route('chats.show', $fresh);
     }
 }

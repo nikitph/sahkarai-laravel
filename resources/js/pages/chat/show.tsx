@@ -309,7 +309,7 @@ export default function ChatShow({
                                         className="mt-3"
                                         onClick={() =>
                                             router.post(
-                                                `/documents/${chat.document.id}/chats`,
+                                                `/chats/${chat.id}/restart`,
                                             )
                                         }
                                     >

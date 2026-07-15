@@ -83,7 +83,7 @@ export default function ArchiveIndex({
                     <CardContent className="p-4">
                         <form
                             onSubmit={submit}
-                            className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_repeat(4,165px)_auto]"
+                            className="grid gap-3 lg:grid-cols-4"
                         >
                             <div className="relative">
                                 <Search className="absolute top-3 left-3 size-4 text-muted-foreground" />
@@ -135,6 +135,22 @@ export default function ArchiveIndex({
                                     ))}
                                 </select>
                             ))}
+                            <Input
+                                type="date"
+                                aria-label="Published from"
+                                value={form.data.date_from}
+                                onChange={(e) =>
+                                    form.setData('date_from', e.target.value)
+                                }
+                            />
+                            <Input
+                                type="date"
+                                aria-label="Published to"
+                                value={form.data.date_to}
+                                onChange={(e) =>
+                                    form.setData('date_to', e.target.value)
+                                }
+                            />
                             <select
                                 value={form.data.sort}
                                 onChange={(e) =>
@@ -145,7 +161,7 @@ export default function ArchiveIndex({
                                 <option value="newest">Newest first</option>
                                 <option value="title">Title A–Z</option>
                             </select>
-                            <Button type="submit">
+                            <Button type="submit" className="lg:col-span-4">
                                 <SlidersHorizontal className="mr-1 size-4" />{' '}
                                 Apply
                             </Button>

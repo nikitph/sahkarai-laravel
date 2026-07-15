@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $size_bytes
  * @property string $sha256
  * @property string|null $extracted_text
+ * @property string|null $extracted_path
  * @property string|null $extraction_error
  * @property Carbon $acquired_at
  * @property Carbon|null $extracted_at
@@ -51,5 +53,17 @@ class DocumentVersion extends Model
     public function interpretation(): HasOne
     {
         return $this->hasOne(Interpretation::class);
+    }
+
+    public function sourceText(): string
+    {
+        if ($this->extracted_path) {
+            $contents = Storage::disk(config('sahkarai.ingestion.storage_disk'))->get($this->extracted_path);
+            if (filled($contents)) {
+                return $contents;
+            }
+        }
+
+        return $this->extracted_text ?? '';
     }
 }

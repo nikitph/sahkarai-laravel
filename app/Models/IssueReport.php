@@ -25,4 +25,10 @@ class IssueReport extends Model
     {
         return $this->belongsTo(Interpretation::class);
     }
+
+    /** @return BelongsTo<DocumentVersion, $this> */
+    public function version(): BelongsTo
+    {
+        return $this->belongsTo(DocumentVersion::class, 'document_version_id');
+    }
 }

@@ -19,7 +19,7 @@ class RegulatoryChatAgent implements Agent, Conversational
     public function instructions(): Stringable|string
     {
         $document = $this->chat->document;
-        $source = $this->chat->version->extracted_text;
+        $source = $this->chat->version->sourceText();
 
         return "You answer questions only about the regulatory document titled '{$document->title}'. "
             .'Use the source below as the authority. Clearly say when the answer is absent or uncertain. '

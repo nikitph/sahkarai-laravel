@@ -13,7 +13,7 @@ class NotifyRegulatoryUpdate
     public function handle(DocumentVersion $version): void
     {
         $document = $version->document;
-        if ($document->is_backfill) {
+        if ($document->is_backfill || ! in_array($version->status, ['published', 'interpretation_partial'], true)) {
             return;
         }
 
@@ -33,21 +33,33 @@ class NotifyRegulatoryUpdate
                 $cadence = $preferences->{$sourceField.'_cadence'};
 
                 $eligible = $version->version > 1
-                    ? $user->documentViews()->where('regulatory_document_id', $document->getKey())->exists()
+                    ? $user->documentViews()->where('document_version_id', $version->supersedes_id)->exists()
                     : $user->subscription?->current_period_start?->lte($document->created_at) ?? false;
                 if (! $eligible) {
                     return;
                 }
 
                 $dedupe = "regulatory:{$version->getKey()}:user:{$user->getKey()}";
+                $priorVersion = $version->supersedes;
                 $notification = ProductNotification::query()->firstOrCreate(
                     ['dedupe_key' => $dedupe],
                     [
                         'user_id' => $user->getKey(),
                         'type' => $version->version > 1 ? 'regulatory_revision' : 'regulatory_update',
                         'title' => $document->title,
-                        'body' => __('notifications.regulatory_update_body', ['title' => $document->title], $user->locale->value),
-                        'data' => ['document_id' => $document->getKey(), 'version_id' => $version->getKey()],
+                        'body' => $priorVersion
+                            ? __('notifications.regulatory_revision_body', [
+                                'title' => $document->title,
+                                'version' => $version->version,
+                                'prior_version' => $priorVersion->version,
+                            ], $user->locale->value)
+                            : __('notifications.regulatory_update_body', ['title' => $document->title], $user->locale->value),
+                        'data' => [
+                            'document_id' => $document->getKey(),
+                            'version_id' => $version->getKey(),
+                            'supersedes_version_id' => $priorVersion?->getKey(),
+                            'supersedes_version' => $priorVersion?->version,
+                        ],
                     ],
                 );
 

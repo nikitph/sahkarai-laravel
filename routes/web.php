@@ -77,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('chats/{chat}/messages', [ChatMessageController::class, 'store'])->name('chats.messages.store');
     Route::post('chats/{chat}/stream', ChatStreamController::class)->name('chats.stream');
     Route::patch('chats/{chat}/close', [ChatController::class, 'close'])->name('chats.close');
+    Route::post('chats/{chat}/restart', [ChatController::class, 'restart'])->name('chats.restart');
     Route::get('chats/{chat}/export/{format}', ChatExportController::class)->name('chats.export');
     Route::get('interpretations/{interpretation}/export/{format}', InterpretationExportController::class)->name('interpretations.export');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');

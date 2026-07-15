@@ -5,18 +5,25 @@ namespace Tests\Feature;
 use App\Actions\Billing\ProcessRazorpayWebhook;
 use App\Actions\Chat\SendChatMessage;
 use App\Actions\Ingestion\AcquireDocument;
+use App\Actions\Interpretations\GenerateLocaleInterpretation;
 use App\Actions\Notifications\NotifyRegulatoryUpdate;
 use App\Ai\Agents\RegulatoryChatAgent;
+use App\Ai\Agents\RegulatoryInterpretationAgent;
 use App\Contracts\Ingestion\SourceAdapter;
 use App\Data\DocumentCandidate;
 use App\Enums\Applicability;
 use App\Enums\DocumentType;
 use App\Enums\RegulatorySource;
 use App\Enums\SubscriptionStatus;
+use App\Enums\SupportedLocale;
 use App\Enums\Tier;
+use App\Jobs\Ingestion\ExtractDocumentText;
 use App\Jobs\Ingestion\RunSourcePoll;
+use App\Jobs\Interpretations\GenerateInterpretation;
 use App\Models\Chat;
 use App\Models\DocumentVersion;
+use App\Models\DocumentView;
+use App\Models\PollRun;
 use App\Models\RegulatoryDocument;
 use App\Models\Subscription;
 use App\Models\User;
@@ -25,6 +32,7 @@ use App\Services\Ingestion\SourceRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -146,6 +154,8 @@ class SahkarAiProductTest extends TestCase
         $this->assertNull($duplicate);
         $this->assertSame(2, $second?->version);
         $this->assertSame($first?->id, $second?->supersedes_id);
+        $this->assertStringContainsString('/RBI-1.txt', $first?->original_path ?? '');
+        $this->assertStringContainsString('/RBI-1-v2.txt', $second?->original_path ?? '');
         $this->assertDatabaseCount('regulatory_documents', 1);
         $this->assertDatabaseCount('document_versions', 2);
     }
@@ -349,6 +359,217 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseCount('poll_runs', 3);
         $this->assertDatabaseCount('ops_alerts', 1);
         $this->assertDatabaseHas('ops_alerts', ['type' => 'source_poll_failed', 'severity' => 'critical']);
+    }
+
+    public function test_structured_interpretation_response_is_validated_and_updates_document_metadata(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $payload = [
+            'locale' => 'en',
+            'summary' => implode(' ', array_fill(0, 150, 'word')),
+            'takeaways' => ['Review the circular.', 'Assign an owner.', 'Track the deadline.'],
+            'glossary' => [['term' => 'UCB', 'definition' => 'Urban cooperative bank.']],
+            'deadlines' => [['due_date' => '2026-08-31', 'description' => 'Complete implementation.']],
+            'applicability_tags' => ['ucb', 'generic'],
+            'effective_date' => '2026-08-01',
+            'document_type' => 'notification',
+        ];
+        RegulatoryInterpretationAgent::fake([$payload])->preventStrayPrompts();
+
+        $result = app(GenerateLocaleInterpretation::class)->handle($version, SupportedLocale::English);
+
+        $this->assertEquals($payload, $result);
+        $this->assertSame(['ucb', 'generic'], $document->refresh()->applicability_tags);
+        $this->assertSame(DocumentType::Notification, $document->document_type);
+        $this->assertSame('2026-08-01', $document->effective_at?->toDateString());
+    }
+
+    public function test_text_extraction_is_idempotent_after_success(): void
+    {
+        Storage::fake('local');
+        config(['sahkarai.ingestion.storage_disk' => 'local']);
+        [, $version] = $this->documentWithInterpretation();
+        $version->update(['extracted_at' => now()]);
+        Queue::fake();
+
+        (new ExtractDocumentText($version->id))->handle();
+
+        Queue::assertNotPushed(GenerateInterpretation::class);
+        $version->refresh();
+        $this->assertSame('The source document requires an implementation review.', $version->extracted_text);
+        $this->assertSame('extracted/test.txt', $version->extracted_path);
+        Storage::disk('local')->assertExists('extracted/test.txt');
+        $this->assertSame($version->extracted_text, Storage::disk('local')->get($version->extracted_path));
+    }
+
+    public function test_successful_extraction_writes_a_canonical_text_artifact(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        config(['sahkarai.ingestion.storage_disk' => 'local']);
+        [$document] = $this->documentWithInterpretation();
+        $version = $document->versions()->create([
+            'version' => 2,
+            'status' => 'acquired',
+            'original_path' => 'originals/rbi/2026/05/RBI-CIRC-2026-001.html',
+            'mime_type' => 'text/html',
+            'sha256' => hash('sha256', (string) Str::uuid()),
+            'acquired_at' => now(),
+        ]);
+        Storage::disk('local')->put($version->original_path, '<h1>Capital adequacy</h1><p>Review required.</p>');
+
+        (new ExtractDocumentText($version->id))->handle();
+
+        $version->refresh();
+        $this->assertSame('extracted', $version->status);
+        $this->assertSame('extracted/rbi/2026/05/RBI-CIRC-2026-001.txt', $version->extracted_path);
+        Storage::disk('local')->assertExists($version->extracted_path);
+        $this->assertStringContainsString('Capital adequacy', Storage::disk('local')->get($version->extracted_path));
+        Queue::assertPushed(GenerateInterpretation::class, fn (GenerateInterpretation $job) => $job->documentVersionId === $version->id);
+    }
+
+    public function test_partial_poll_records_the_source_document_that_failed_acquisition(): void
+    {
+        Log::spy();
+        $candidate = new DocumentCandidate(
+            RegulatorySource::Rbi,
+            'RBI-BROKEN-1',
+            'Unavailable circular',
+            'https://example.test/unavailable.pdf',
+        );
+        $adapter = Mockery::mock(SourceAdapter::class);
+        $adapter->shouldReceive('discover')->once()->andReturn([$candidate]);
+        $registry = Mockery::mock(SourceRegistry::class);
+        $registry->shouldReceive('adapter')->once()->with(RegulatorySource::Rbi)->andReturn($adapter);
+        Http::fake(['https://example.test/*' => Http::response('', 503)]);
+
+        (new RunSourcePoll(RegulatorySource::Rbi))->handle($registry, app(AcquireDocument::class));
+
+        $this->assertDatabaseHas('poll_runs', [
+            'source' => 'rbi',
+            'status' => 'partial',
+            'failed_count' => 1,
+        ]);
+        $this->assertStringContainsString(
+            'acquisition_failed:RBI-BROKEN-1',
+            (string) PollRun::query()->sole()->error,
+        );
+    }
+
+    public function test_issue_report_records_exact_version_and_locale_with_optional_category(): void
+    {
+        [, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier1()->create();
+
+        $this->actingAs($user)->post(route('interpretations.issues.store', $version->interpretation), [
+            'category' => null,
+            'locale' => 'hi',
+            'description' => 'The Hindi wording should be reviewed.',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('issue_reports', [
+            'user_id' => $user->id,
+            'interpretation_id' => $version->interpretation->id,
+            'document_version_id' => $version->id,
+            'locale' => 'hi',
+            'category' => null,
+            'details' => 'The Hindi wording should be reviewed.',
+        ]);
+    }
+
+    public function test_revision_notification_explicitly_references_the_prior_version(): void
+    {
+        [$document, $prior] = $this->documentWithInterpretation();
+        $revision = $document->versions()->create([
+            'version' => 2,
+            'supersedes_id' => $prior->id,
+            'status' => 'published',
+            'original_path' => 'originals/test-v2.txt',
+            'mime_type' => 'text/plain',
+            'sha256' => hash('sha256', (string) Str::uuid()),
+            'extracted_text' => 'Revised source.',
+            'acquired_at' => now(),
+        ]);
+        $user = User::factory()->tier1()->create();
+        $user->subscription()->create([
+            'tier' => Tier::Tier1,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => now()->subMonth(),
+            'current_period_end' => now()->addMonth(),
+        ]);
+        $user->notificationPreference()->create();
+        DocumentView::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $prior->id,
+            'last_viewed_at' => now(),
+        ]);
+
+        app(NotifyRegulatoryUpdate::class)->handle($revision);
+
+        $notification = $user->productNotifications()->sole();
+        $this->assertSame($prior->id, $notification->data['supersedes_version_id']);
+        $this->assertSame(1, $notification->data['supersedes_version']);
+        $this->assertStringContainsString('version 1', $notification->body);
+    }
+
+    public function test_new_tier_two_cycle_expires_unused_credits_then_grants_full_allowance(): void
+    {
+        $user = User::factory()->tier2(175)->create();
+        Subscription::create([
+            'user_id' => $user->id,
+            'provider_subscription_id' => 'sub_renewal',
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Active,
+            'current_period_start' => now()->subMonth(),
+            'current_period_end' => now(),
+        ]);
+        $payload = [
+            'event' => 'subscription.charged',
+            'payload' => ['subscription' => ['entity' => [
+                'id' => 'sub_renewal',
+                'status' => 'active',
+                'current_start' => now()->timestamp,
+                'current_end' => now()->addMonth()->timestamp,
+            ]]],
+        ];
+
+        app(ProcessRazorpayWebhook::class)->handle('renewal_evt_1', $payload);
+
+        $this->assertSame(200, $user->refresh()->credits_balance);
+        $this->assertDatabaseHas('credit_ledger', ['user_id' => $user->id, 'amount' => -175, 'reason' => 'adjustment']);
+        $this->assertDatabaseHas('credit_ledger', ['user_id' => $user->id, 'amount' => 200, 'reason' => 'grant_cycle']);
+    }
+
+    public function test_context_restart_and_version_navigation_remain_pinned_to_the_selected_revision(): void
+    {
+        [$document, $prior] = $this->documentWithInterpretation();
+        $latest = $document->versions()->create([
+            'version' => 2,
+            'supersedes_id' => $prior->id,
+            'status' => 'published',
+            'original_path' => 'originals/test-v2.txt',
+            'mime_type' => 'text/plain',
+            'sha256' => hash('sha256', (string) Str::uuid()),
+            'extracted_text' => 'Latest source.',
+            'acquired_at' => now(),
+        ]);
+        $user = User::factory()->tier2()->create();
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $prior->id,
+            'status' => 'closed_context_full',
+        ]);
+
+        $this->actingAs($user)->get(route('archive.show', ['document' => $document, 'version' => $prior->id]))
+            ->assertInertia(fn ($page) => $page->where('document.latest_version.id', $prior->id));
+        $this->actingAs($user)->post(route('chats.restart', $chat))->assertRedirect();
+
+        $fresh = Chat::query()->whereKeyNot($chat->id)->sole();
+        $this->assertSame($prior->id, $fresh->document_version_id);
+        $this->assertNotSame($latest->id, $fresh->document_version_id);
+        $this->assertDatabaseCount('chat_messages', 0);
     }
 
     /** @return array{RegulatoryDocument, DocumentVersion} */

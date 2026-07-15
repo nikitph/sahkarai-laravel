@@ -16,12 +16,15 @@ class RunSourcePoll implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    // HTTP clients already retry transient transport failures. A poll run itself
+    // is attempted once so queue retries cannot masquerade as consecutive runs.
+    public int $tries = 1;
 
     public function __construct(public readonly RegulatorySource $source, public readonly string $kind = 'scheduled') {}
 
     public function handle(SourceRegistry $registry, AcquireDocument $acquire): void
     {
+        $errors = [];
         $run = PollRun::create([
             'source' => $this->source,
             'kind' => $this->kind,
@@ -56,12 +59,14 @@ class RunSourcePoll implements ShouldQueue
                 } catch (Throwable $exception) {
                     report($exception);
                     $run->increment('failed_count');
+                    $errors[] = "acquisition_failed:{$candidate->sourceDocumentId}: {$exception->getMessage()}";
                 }
             }
 
             $run->refresh();
             $run->update([
                 'status' => $run->failed_count > 0 ? 'partial' : 'ok',
+                'error' => $errors === [] ? null : implode("\n", $errors),
                 'completed_at' => now(),
             ]);
         } catch (Throwable $exception) {

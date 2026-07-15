@@ -7,6 +7,7 @@ use App\Enums\DocumentType;
 use App\Enums\RegulatorySource;
 use App\Enums\SupportedLocale;
 use App\Http\Controllers\Controller;
+use App\Models\DocumentVersion;
 use App\Models\DocumentView;
 use App\Models\RegulatoryDocument;
 use App\Services\Archive\ArchiveSearch;
@@ -50,31 +51,34 @@ class ArchiveController extends Controller
     {
         $validated = $request->validate([
             'locale' => ['nullable', Rule::enum(SupportedLocale::class)],
+            'version' => ['nullable', 'integer', 'min:1'],
         ]);
         $document->load(['versions.interpretation', 'latestVersion.interpretation']);
+        $version = isset($validated['version'])
+            ? $document->versions->firstWhere('id', $validated['version'])
+            : $document->latestVersion;
+        abort_unless($version instanceof DocumentVersion, 404);
         DocumentView::query()->updateOrCreate(
-            ['user_id' => $request->user()->getKey(), 'regulatory_document_id' => $document->getKey()],
-            ['last_viewed_at' => now()],
+            ['user_id' => $request->user()->getKey(), 'document_version_id' => $version->getKey()],
+            ['regulatory_document_id' => $document->getKey(), 'last_viewed_at' => now()],
         );
-
-        $version = $document->latestVersion;
         $canInterpret = $request->user()->canUseInterpretations();
         $requestedLocale = $validated['locale'] ?? $request->user()->locale->value;
-        $availableLocale = $canInterpret && $version?->interpretation
+        $availableLocale = $canInterpret && $version->interpretation
             ? (isset($version->interpretation->locale_payloads[$requestedLocale]) ? $requestedLocale : 'en')
             : null;
 
         return Inertia::render('archive/show', [
             'document' => [
                 ...$document->only(['id', 'title', 'source', 'source_document_id', 'document_type', 'applicability', 'published_at', 'effective_at', 'source_url']),
-                'latest_version' => $version ? [
+                'latest_version' => [
                     ...$version->only(['id', 'version', 'status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at']),
                     'interpretation' => $canInterpret ? $version->interpretation?->payloadFor($requestedLocale) : null,
                     'interpretation_locale' => $availableLocale,
                     'requested_locale' => $requestedLocale,
                     'locale_fallback' => $availableLocale === 'en' && $requestedLocale !== 'en',
                     'interpretation_meta' => $canInterpret ? $version->interpretation?->only(['id', 'status', 'model_id', 'prompt_version', 'generated_at']) : null,
-                ] : null,
+                ],
                 'versions' => $document->versions->map->only(['id', 'version', 'status', 'acquired_at']),
             ],
             'capabilities' => [
@@ -87,7 +91,10 @@ class ArchiveController extends Controller
 
     public function download(Request $request, RegulatoryDocument $document): StreamedResponse
     {
-        $version = $document->latestVersion()->firstOrFail();
+        $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
+        $version = isset($validated['version'])
+            ? $document->versions()->whereKey($validated['version'])->firstOrFail()
+            : $document->latestVersion()->firstOrFail();
 
         return Storage::disk(config('sahkarai.ingestion.storage_disk'))->download(
             $version->original_path,

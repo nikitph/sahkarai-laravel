@@ -77,7 +77,12 @@ class ProcessRazorpayWebhook
                     $user->update(['tier' => $targetTier]);
                     if ($targetTier === Tier::Tier2 && $eventType === 'subscription.charged') {
                         $grant = $this->cycleCreditGrant($previousTier, $previousPeriodStart, $previousPeriodEnd);
-                        $this->credits->handle($user, $grant - $user->credits_balance, CreditReason::GrantCycle, "razorpay-cycle:{$eventId}", $subscription);
+                        if ($user->credits_balance > 0) {
+                            $this->credits->handle($user, -$user->credits_balance, CreditReason::Adjustment, "razorpay-cycle-expiry:{$eventId}", $subscription, [
+                                'kind' => 'unused_cycle_expiry',
+                            ]);
+                        }
+                        $this->credits->handle($user, $grant, CreditReason::GrantCycle, "razorpay-cycle:{$eventId}", $subscription);
                         $user->update(['credits_reset_at' => $subscription->current_period_end]);
                     }
                 }

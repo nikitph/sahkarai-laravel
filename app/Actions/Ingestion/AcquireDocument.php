@@ -51,8 +51,12 @@ class AcquireDocument
             $previous = $document->versions()->lockForUpdate()->latest('version')->first();
             $next = $previous ? $previous->version + 1 : 1;
             $date = ($candidate->publishedAt ?? now())->format('Y/m');
-            $path = "originals/{$candidate->source->value}/{$date}/{$document->getKey()}-v{$next}.{$extension}";
-            Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($path, $contents);
+            $sourceId = preg_replace('/[^A-Za-z0-9._-]/', '_', $candidate->sourceDocumentId) ?: "document-{$document->getKey()}";
+            $revisionSuffix = $next > 1 ? "-v{$next}" : '';
+            $path = "originals/{$candidate->source->storageDirectory()}/{$date}/{$sourceId}{$revisionSuffix}.{$extension}";
+            if (! Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($path, $contents)) {
+                throw new RuntimeException("Unable to persist the original document at {$path}.");
+            }
 
             return $document->versions()->create([
                 'supersedes_id' => $previous?->getKey(),
