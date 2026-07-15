@@ -1,52 +1,66 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
-    FolderKanban,
+    Bell,
+    BookOpenText,
+    Bot,
+    CalendarDays,
     Sparkles,
-    UserPlus,
-    UsersRound,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useT } from '@/lib/i18n';
 
-type Project = { id: number; name: string; status: string; created_at: string };
-type Activity = { id: number; event: string; created_at: string };
+type Document = {
+    id: number;
+    title: string;
+    source: string;
+    document_type: string;
+    applicability: string;
+    published_at: string | null;
+    latest_version?: { version: number; status: string };
+};
 
 export default function Dashboard({
     stats,
-    recentProjects,
-    recentActivity,
+    recentDocuments,
 }: {
-    stats: { projects: number; members: number; pendingInvitations: number };
-    recentProjects: Project[];
-    recentActivity: Activity[];
+    stats: {
+        documents: number;
+        newThisWeek: number;
+        unreadNotifications: number;
+        credits: number;
+    };
+    recentDocuments: Document[];
 }) {
-    const { auth, organization } = usePage().props;
+    const { auth, product } = usePage().props;
+    const t = useT();
     const firstName = auth.user.name.split(' ')[0];
 
     return (
         <>
-            <Head title="Dashboard" />
+            <Head title={t('dashboard')} />
             <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-4 md:p-8">
                 <motion.section
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary via-primary to-indigo-700 p-7 text-primary-foreground shadow-xl shadow-primary/10 md:p-10"
+                    className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-[radial-gradient(circle_at_top_right,_#5b5bd6,_#272759_58%,_#17172f)] p-7 text-white shadow-2xl shadow-indigo-950/20 md:p-10"
                 >
-                    <div className="absolute -top-20 -right-16 size-72 rounded-full bg-white/10 blur-3xl" />
-                    <div className="relative max-w-2xl">
-                        <Badge className="mb-5 border-white/20 bg-white/10 text-white hover:bg-white/10">
-                            <Sparkles className="mr-1 size-3" />{' '}
-                            {organization?.current?.name}
+                    <div className="absolute -top-20 -right-10 size-80 rounded-full bg-cyan-300/15 blur-3xl" />
+                    <div className="relative max-w-3xl">
+                        <Badge className="mb-5 border-white/15 bg-white/10 text-white hover:bg-white/10">
+                            <Sparkles className="mr-1 size-3" /> Regulatory
+                            intelligence, made practical
                         </Badge>
-                        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                            Good to see you, {firstName}.
+                        <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                            {firstName}, {t('welcome').toLowerCase()}.
                         </h1>
-                        <p className="mt-3 max-w-xl text-sm leading-6 text-white/70 md:text-base">
-                            Your SaaS foundation is live. Build the first piece
-                            of product value from the Projects reference module.
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-indigo-100/75 md:text-base">
+                            Monitor RBI, Income Tax and GST updates, understand
+                            their impact in your language, and explore each
+                            document with grounded AI.
                         </p>
                         <div className="mt-7 flex flex-wrap gap-3">
                             <Button
@@ -54,51 +68,59 @@ export default function Dashboard({
                                 variant="secondary"
                                 className="rounded-xl"
                             >
-                                <Link href="/projects">
-                                    Open projects{' '}
+                                <Link href="/archive">
+                                    {t('archive')}{' '}
                                     <ArrowRight className="ml-1 size-4" />
                                 </Link>
                             </Button>
-                            <Button
-                                asChild
-                                variant="ghost"
-                                className="rounded-xl text-white hover:bg-white/10 hover:text-white"
-                            >
-                                <Link href="/members">
-                                    <UserPlus className="mr-1 size-4" /> Invite
-                                    your team
-                                </Link>
-                            </Button>
+                            {product?.tier === 'free' && (
+                                <Button
+                                    asChild
+                                    variant="ghost"
+                                    className="rounded-xl text-white hover:bg-white/10 hover:text-white"
+                                >
+                                    <Link href="/billing">{t('upgrade')}</Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </motion.section>
 
-                <section className="grid gap-4 md:grid-cols-3">
+                <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                         {
-                            label: 'Active projects',
-                            value: stats.projects,
-                            icon: FolderKanban,
-                            tone: 'bg-violet-500/10 text-violet-600',
+                            label: t('documents'),
+                            value: stats.documents,
+                            icon: BookOpenText,
+                            tone: 'bg-indigo-500/10 text-indigo-600',
                         },
                         {
-                            label: 'Workspace members',
-                            value: stats.members,
-                            icon: UsersRound,
+                            label: 'New this week',
+                            value: stats.newThisWeek,
+                            icon: CalendarDays,
                             tone: 'bg-emerald-500/10 text-emerald-600',
                         },
                         {
-                            label: 'Pending invites',
-                            value: stats.pendingInvitations,
-                            icon: UserPlus,
+                            label: t('notifications'),
+                            value: stats.unreadNotifications,
+                            icon: Bell,
                             tone: 'bg-amber-500/10 text-amber-600',
+                        },
+                        {
+                            label: t('credits'),
+                            value:
+                                product?.tier === 'tier_2'
+                                    ? stats.credits
+                                    : '—',
+                            icon: Bot,
+                            tone: 'bg-fuchsia-500/10 text-fuchsia-600',
                         },
                     ].map((item, index) => (
                         <motion.div
                             key={item.label}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.08 * index }}
+                            transition={{ delay: index * 0.05 }}
                         >
                             <Card className="rounded-2xl border-border/60 shadow-sm">
                                 <CardContent className="flex items-center gap-4 p-5">
@@ -121,96 +143,66 @@ export default function Dashboard({
                     ))}
                 </section>
 
-                <section className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-                    <Card className="rounded-2xl border-border/60 shadow-sm">
-                        <CardHeader className="flex-row items-center justify-between">
-                            <CardTitle className="text-base">
-                                Recent projects
-                            </CardTitle>
-                            <Button asChild variant="ghost" size="sm">
-                                <Link href="/projects">View all</Link>
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {recentProjects.length ? (
-                                recentProjects.map((project) => (
-                                    <div
-                                        key={project.id}
-                                        className="flex items-center gap-3 rounded-xl border border-transparent p-3 transition hover:border-border hover:bg-muted/50"
-                                    >
-                                        <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                                            <FolderKanban className="size-4" />
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium">
-                                                {project.name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                Created{' '}
-                                                {new Date(
-                                                    project.created_at,
-                                                ).toLocaleDateString()}
-                                            </p>
-                                        </div>
+                <Card className="rounded-3xl border-border/60 shadow-sm">
+                    <CardHeader className="flex-row items-center justify-between">
+                        <CardTitle>{t('latest')}</CardTitle>
+                        <Button asChild variant="ghost" size="sm">
+                            <Link href="/archive">
+                                View archive{' '}
+                                <ArrowRight className="ml-1 size-4" />
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 md:grid-cols-2">
+                        {recentDocuments.length ? (
+                            recentDocuments.map((document) => (
+                                <Link
+                                    key={document.id}
+                                    href={`/archive/${document.id}`}
+                                    className="group rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-md"
+                                >
+                                    <div className="flex items-center gap-2">
                                         <Badge
                                             variant="secondary"
-                                            className="capitalize"
+                                            className="uppercase"
                                         >
-                                            {project.status}
+                                            {document.source.replace('_', ' ')}
                                         </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                            {document.document_type.replaceAll(
+                                                '_',
+                                                ' ',
+                                            )}
+                                        </span>
                                     </div>
-                                ))
-                            ) : (
-                                <Empty text="Create your first project to establish the product pattern." />
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card
-                        id="activity"
-                        className="rounded-2xl border-border/60 shadow-sm"
-                    >
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Activity
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {recentActivity.length ? (
-                                recentActivity.map((event) => (
-                                    <div key={event.id} className="flex gap-3">
-                                        <span className="mt-1 size-2 rounded-full bg-primary ring-4 ring-primary/10" />
-                                        <div>
-                                            <p className="text-sm font-medium">
-                                                {event.event.replaceAll(
-                                                    '.',
-                                                    ' ',
-                                                )}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(
-                                                    event.created_at,
-                                                ).toLocaleString()}
-                                            </p>
-                                        </div>
+                                    <h3 className="mt-3 line-clamp-2 leading-snug font-semibold group-hover:text-indigo-600">
+                                        {document.title}
+                                    </h3>
+                                    <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                                        <span>
+                                            {document.published_at
+                                                ? new Date(
+                                                      document.published_at,
+                                                  ).toLocaleDateString()
+                                                : 'Date unavailable'}
+                                        </span>
+                                        <span className="capitalize">
+                                            {document.applicability}
+                                        </span>
                                     </div>
-                                ))
-                            ) : (
-                                <Empty text="Important changes will appear here." />
-                            )}
-                        </CardContent>
-                    </Card>
-                </section>
+                                </Link>
+                            ))
+                        ) : (
+                            <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+                                No regulatory documents have been ingested yet.
+                                The scheduled source adapters will populate this
+                                archive.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </>
-    );
-}
-
-function Empty({ text }: { text: string }) {
-    return (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            {text}
-        </div>
     );
 }
 

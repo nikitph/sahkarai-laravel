@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:DejaVu Sans,sans-serif;color:#172033;font-size:12px;line-height:1.55}h1{font-size:22px;color:#27347a}h2{margin-top:24px;border-bottom:1px solid #ddd}section{padding:10px 14px;margin:10px 0;background:#f5f7fb;border-radius:6px}.role{text-transform:uppercase;font-size:9px;color:#687089}</style></head><body>
+<h1>{{ $document_version['title'] }}</h1><p>Chat #{{ $chat['id'] }} · Version {{ $document_version['version'] }} · {{ $chat['status'] }}</p><h2>Conversation</h2>
+@foreach ($messages as $message)<section><div class="role">{{ $message['role'] }}</div><div>{!! nl2br(e($message['content'])) !!}</div></section>@endforeach
+<h2>Insights</h2><pre>{{ json_encode($insights, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre></body></html>

@@ -44,6 +44,8 @@ services:
       start_period: 30s
     ports:
       - "8002:8080"
+    volumes:
+      - appstorage:/var/www/html/storage/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +56,8 @@ services:
     image: ${APP_IMAGE:-sahkarai-laravel:local}
     env_file: .env
     command: php artisan queue:work --tries=2 --sleep=1 --max-time=3600
+    volumes:
+      - appstorage:/var/www/html/storage/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,3 +89,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  appstorage:

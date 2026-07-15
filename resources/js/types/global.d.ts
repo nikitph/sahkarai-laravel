@@ -13,11 +13,19 @@ declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
+            locale: 'en' | 'hi' | 'gu' | 'mr';
             auth: Auth;
             organization: {
                 current: Organization | null;
                 all: Organization[];
                 permissions: string[];
+            } | null;
+            product: {
+                tier: 'free' | 'tier_1' | 'tier_2';
+                role: 'individual_member' | 'saas_admin';
+                locale: 'en' | 'hi' | 'gu' | 'mr';
+                credits: number;
+                unread_notifications: number;
             } | null;
             flash: { success?: string; error?: string };
             sidebarOpen: boolean;

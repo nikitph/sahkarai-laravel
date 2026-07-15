@@ -1,68 +1,79 @@
 # SahkarAI
 
-The Laravel application for SahkarAI. It starts at the business-use-case line: product identity, organizations, permissions, UI, queues, realtime, AI primitives and deployment conventions are already established.
+SahkarAI turns RBI, Income Tax, and GST publications into a searchable regulatory archive, localized plain-language interpretations, notifications, and document-grounded AI chats.
+
+This repository is the product application generated from the company Laravel initializer. It runs on the frozen multi-arch `ghcr.io/nikitph/laravel-runtime:1.0.0` image with PostgreSQL, Redis queues, Reverb, and separate web/worker/scheduler roles.
 
 ## Start locally
+
+Docker Desktop is the only prerequisite:
 
 ```bash
 ./bin/setup
 ```
 
-Open `http://localhost:8002` and use `demo@example.com` / `password`. Then read `docs/START-HERE.md` and give an agent the first domain capability. Docker Desktop is the only setup prerequisite.
+Open `http://localhost:8002` and sign in with one of the seeded accounts:
 
-## Included
+| Account | Password | Access |
+|---|---|---|
+| `demo@example.com` | `password` | Tier 2, 200 chat credits |
+| `admin@example.com` | `password` | SaaS operations |
 
-- Laravel 13 / PHP 8.4 on frozen multi-arch `ghcr.io/nikitph/laravel-runtime:1.0.0`
-- Inertia 3, React 19, TypeScript, Tailwind 4, shadcn-style components and Motion
-- Fortify registration, verification, password reset, 2FA, passkeys and account settings
-- PostgreSQL organizations, memberships, invitations and typed RBAC policies
-- explicit request-scoped tenancy, tenant model scope and isolation tests
-- queued mail, database queues/cache/sessions, scheduler and audit events
-- Laravel AI SDK, Reverb WebSockets and SSE-capable FrankenPHP runtime
-- one image for web, worker, scheduler and Reverb roles
-- Kamal/DigitalOcean deployment templates and one-command verification
-- an end-to-end Projects reference module for agents to copy
+The seed also provides sample regulatory documents and interpretations in English, Hindi, Gujarati, and Marathi. AI and payment credentials are not required to browse the seeded product.
 
-## Commands
+## Product capabilities
 
-```bash
-./bin/setup                 # build and boot the complete local stack
-composer run dev            # host-native app, queue, logs and Vite
-composer verify             # format, static analysis, tests and production build
-php artisan test            # backend suite
-npm run types:check         # frontend types
+- Free, Tier 1, and Tier 2 capability boundaries with user-owned subscriptions and credit ledgers
+- RBI / Income Tax / GST polling, immutable original storage, SHA-256 deduplication, revisions, PDF extraction, and a 12-month backfill command
+- Laravel AI SDK agents for structured four-locale interpretations and document-version-scoped streaming chat
+- searchable latest-version archive with filters, provenance, raw downloads, issue reporting, and Markdown/PDF exports
+- real-time in-app notifications, source-specific email cadence, localized mail, and immutable delivery logs
+- Razorpay checkout seams, signed/idempotent webhooks, queued downgrades, failed-renewal handling, reconciliation, and dormant top-up support
+- private immutable chats, atomic one-credit message debits, context-window closure, and JSON/Markdown/PDF exports
+- operations dashboard for poll health, failures, issue triage, billing drift, and privacy-safe user/chat metadata
+- 30-day account deletion grace period with signed restoration and scheduled hard deletion/anonymization
+
+## External configuration
+
+Copy `.env.example` to `.env`. The two integrations needed for live end-to-end testing are:
+
+```dotenv
+DEEPSEEK_API_KEY=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_TIER_1_PLAN_ID=
+RAZORPAY_TIER_2_PLAN_ID=
 ```
 
-## Architecture rules
+Set `RBI_FEED_URL`, `INCOME_TAX_FEED_URL`, and `GST_FEED_URL` to the chosen RSS/Atom sources before enabling scheduled ingestion. Missing sources fail visibly in `poll_runs` and the ops dashboard.
 
-`Authentication → TenantContext → Policy` is the authorization chain. Tenant-owned models carry `organization_id`; jobs carry the organization ID; controllers do not contain business rules; slow side effects are queued. See `AGENTS.md` and `docs/ARCHITECTURE.md` before adding a module.
+## Common commands
 
-Classic FrankenPHP mode is deliberate. Worker mode remains disabled until request-state isolation is proven under concurrent tenants. Redis is deliberately absent for the single-host baseline; add it when scaling across hosts or when Reverb needs shared pub/sub.
+```bash
+./bin/setup                         # build, migrate, seed, and boot the stack
+composer verify                     # format, static analysis, tests, and production build
+php artisan test                    # backend suite
+php artisan regulatory:backfill     # queue the 12-month source backfill
+php artisan regulatory:backfill --sync
+npm run types:check
+```
+
+Workers must be running for acquisition, extraction, interpretation, notifications, billing reconciliation, and account cleanup. The scheduler dispatches source polls, notification digests, billing transitions, reconciliation, and expired-account purges.
+
+## Architecture and specifications
+
+Read [docs/START-HERE.md](docs/START-HERE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/SPEC-COVERAGE.md](docs/SPEC-COVERAGE.md) before changing a domain boundary. The source requirements live in `specs/**/*.feature`; TypeScript helper files under `specs` are deliberately ignored.
+
+The specs mention Supabase sessions, dormant TOTP, and database RLS. This application deliberately retains the stronger initializer authentication surface (Laravel sessions, optional passkeys and 2FA) and enforces product ownership through policies, owner-scoped relationships, authorization tests, and transactional write actions. There is no admin impersonation or chat-body access.
 
 ## Production
 
-The Dockerfile pins the proven runtime by multi-arch index digest and produces an immutable app image without Node, dev dependencies or `.env`. `config/deploy.yml` runs web/worker/scheduler; `config/deploy.reverb.yml` deploys Reverb behind kamal-proxy on its own WSS host. Registry credentials and application secrets remain in the gitignored `.kamal/secrets` file.
-
-The current DigitalOcean deployment is available at [app.168.144.26.122.sslip.io](https://app.168.144.26.122.sslip.io). Deploy an already-published version with:
+The Dockerfile produces one immutable image without Node, development dependencies, or `.env`. Kamal runs the same image as web, worker, scheduler, and Reverb roles. The existing DigitalOcean configuration is under `config/deploy.yml` and `config/deploy.reverb.yml`.
 
 ```bash
 kamal deploy --version=<version> --skip-push
 kamal deploy -c config/deploy.reverb.yml --version=<version> --skip-push
 ```
 
-Composer downloads in cross-platform builds should use GitHub authentication as an ephemeral BuildKit secret. The Dockerfile consumes `composer_auth` without storing it in an image layer:
-
-```bash
-export COMPOSER_AUTH="$(gh auth token | php -r '$token = trim(stream_get_contents(STDIN)); echo json_encode(["github-oauth" => ["github.com" => $token]]);')"
-docker buildx build --platform linux/amd64 \
-  --secret id=composer_auth,env=COMPOSER_AUTH \
-  --build-arg SERVICE=sahkarai-laravel \
-  -t ghcr.io/nikitph/sahkarai-laravel:<version> --push .
-```
-
-Keep these proven constraints:
-
-- `bootstrap/cache/*` stays in `.dockerignore`.
-- web alone runs boot migrations; migration isolation stays false with database cache.
-- app and Reverb each need an image tag whose `service` label matches the Kamal service name.
-- tests use Reverb, never the null broadcaster.
+Classic FrankenPHP mode remains deliberate. Secrets belong in the gitignored `.kamal/secrets` file or the deployment secret store, never in an image layer.

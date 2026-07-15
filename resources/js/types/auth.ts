@@ -4,6 +4,10 @@ export type User = {
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    role: 'individual_member' | 'saas_admin';
+    tier: 'free' | 'tier_1' | 'tier_2';
+    locale: 'en' | 'hi' | 'gu' | 'mr';
+    credits_balance: number;
     /* @chisel-2fa */
     two_factor_enabled?: boolean;
     /* @end-chisel-2fa */

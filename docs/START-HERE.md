@@ -1,11 +1,12 @@
 # Start here
 
-This starter removes horizontal SaaS decisions so work can begin with the business use case.
+SahkarAI is now a product application, not a generic starter. The Gherkin files in `specs/` are the product contract.
 
-1. Run `./bin/setup` (Docker Desktop is the only prerequisite).
-2. Open `http://localhost:8002` and sign in as `demo@example.com` / `password`.
-3. Read `docs/ARCHITECTURE.md`.
-4. Describe the first business capability to an agent and tell it to copy the Projects vertical slice.
-5. Run `composer verify` before merging.
+1. Run `./bin/setup`.
+2. Open `http://localhost:8002`; use `demo@example.com` / `password` for Tier 2 or `admin@example.com` / `password` for ops.
+3. Read `docs/ARCHITECTURE.md` and `docs/SPEC-COVERAGE.md`.
+4. Put domain behavior in actions/jobs and keep authorization in policies or the admin middleware.
+5. Preserve document-version immutability, user ownership, webhook idempotency, and ledger append-only rules.
+6. Run `composer verify` before committing.
 
-Rename `APP_NAME`, the Composer package name, Kamal `service`/`image`, and the Docker `SERVICE` build argument before the first deploy. Keep app and Reverb as separate Kamal service labels/tags.
+For live AI/payment work, add the DeepSeek and Razorpay values documented in `.env.example`. Never insert provider calls directly in controllers: AI calls go through Laravel AI SDK agents; payment state changes are confirmed by signed Razorpay webhooks.

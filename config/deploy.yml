@@ -84,6 +84,12 @@ env:
     - DB_PASSWORD
     - REVERB_APP_SECRET
 
+# Immutable regulatory originals must outlive image/container replacement. Web
+# serves downloads while workers acquire/extract, so every app role mounts the
+# same single-host Docker volume.
+volumes:
+  - "sahkarai_storage:/var/www/html/storage/app"
+
 accessories:
   postgres:
     image: postgres:17-alpine

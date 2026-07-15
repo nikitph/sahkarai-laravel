@@ -2,24 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditEvent;
-use App\Models\Project;
-use App\Support\Tenancy\TenantContext;
+use App\Models\RegulatoryDocument;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(TenantContext $context): Response
+    public function __invoke(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('dashboard', [
             'stats' => [
-                'projects' => Project::query()->count(),
-                'members' => $context->organization()->members()->count(),
-                'pendingInvitations' => $context->organization()->invitations()->whereNull('accepted_at')->count(),
+                'documents' => RegulatoryDocument::query()->count(),
+                'newThisWeek' => RegulatoryDocument::query()->where('created_at', '>=', now()->subWeek())->count(),
+                'unreadNotifications' => $user->productNotifications()->whereNull('read_at')->count(),
+                'credits' => $user->credits_balance,
             ],
-            'recentProjects' => Project::query()->latest()->limit(5)->get(['id', 'name', 'status', 'created_at']),
-            'recentActivity' => AuditEvent::query()->where('organization_id', $context->id())->latest()->limit(5)->get(),
+            'recentDocuments' => RegulatoryDocument::query()
+                ->with('latestVersion')
+                ->latest('published_at')
+                ->limit(6)
+                ->get(['id', 'title', 'source', 'document_type', 'published_at', 'applicability']),
+            'subscription' => $user->subscription,
         ]);
     }
 }

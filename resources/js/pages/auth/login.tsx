@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useT } from '@/lib/i18n';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -18,11 +19,21 @@ type Props = {
 };
 
 export default function Login({ status, canResetPassword }: Props) {
+    const t = useT();
+    const { locale } = usePage().props;
+
     return (
         <>
-            <Head title="Log in" />
+            <Head title={t('login')} />
 
-            <PasskeyVerify />
+            <div className="mb-6 text-center">
+                <h1 className="text-xl font-semibold">{t('loginTitle')}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    {t('loginDescription')}
+                </p>
+            </div>
+
+            {locale === 'en' && <PasskeyVerify />}
 
             <Form
                 {...store.form()}
@@ -33,7 +44,7 @@ export default function Login({ status, canResetPassword }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">{t('email')}</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -49,14 +60,16 @@ export default function Login({ status, canResetPassword }: Props) {
 
                             <div className="grid gap-2">
                                 <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
+                                    <Label htmlFor="password">
+                                        {t('password')}
+                                    </Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
                                             className="ml-auto text-sm"
                                             tabIndex={5}
                                         >
-                                            Forgot your password?
+                                            {t('forgot')}
                                         </TextLink>
                                     )}
                                 </div>
@@ -66,7 +79,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                     required
                                     tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Password"
+                                    placeholder={t('password')}
                                 />
                                 <InputError message={errors.password} />
                             </div>
@@ -77,7 +90,9 @@ export default function Login({ status, canResetPassword }: Props) {
                                     name="remember"
                                     tabIndex={3}
                                 />
-                                <Label htmlFor="remember">Remember me</Label>
+                                <Label htmlFor="remember">
+                                    {t('remember')}
+                                </Label>
                             </div>
 
                             <Button
@@ -88,14 +103,14 @@ export default function Login({ status, canResetPassword }: Props) {
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                {t('login')}
                             </Button>
                         </div>
 
                         <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
+                            {t('noAccount')}{' '}
                             <TextLink href={register()} tabIndex={5}>
-                                Sign up
+                                {t('signup')}
                             </TextLink>
                         </div>
                     </>
@@ -107,6 +122,26 @@ export default function Login({ status, canResetPassword }: Props) {
                     {status}
                 </div>
             )}
+            <div className="mt-6 flex justify-center gap-3 text-xs text-muted-foreground">
+                {[
+                    ['en', 'English'],
+                    ['hi', 'हिन्दी'],
+                    ['gu', 'ગુજરાતી'],
+                    ['mr', 'मराठी'],
+                ].map(([code, label]) => (
+                    <a
+                        key={code}
+                        href={`/locale/${code}`}
+                        className={
+                            locale === code
+                                ? 'font-semibold text-foreground'
+                                : 'hover:text-foreground'
+                        }
+                    >
+                        {label}
+                    </a>
+                ))}
+            </div>
         </>
     );
 }

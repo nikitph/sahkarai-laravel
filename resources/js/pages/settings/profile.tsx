@@ -1,14 +1,13 @@
-import { Form, Head, usePage } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
-import { send } from '@/routes/verification';
 import type { Auth } from '@/types';
 
 type PageProps = {
@@ -16,11 +15,9 @@ type PageProps = {
 };
 
 export default function Profile({
-    mustVerifyEmail,
-    status,
+    subscription,
 }: {
-    mustVerifyEmail: boolean;
-    status?: string;
+    subscription: { current_period_end: string | null } | null;
 }) {
     const { auth } = usePage<PageProps>().props;
 
@@ -66,6 +63,29 @@ export default function Profile({
                             </div>
 
                             <div className="grid gap-2">
+                                <Label htmlFor="locale">
+                                    Preferred language
+                                </Label>
+                                <select
+                                    id="locale"
+                                    name="locale"
+                                    defaultValue={auth.user.locale}
+                                    className="h-9 rounded-md border bg-background px-3 text-sm"
+                                >
+                                    <option value="en">English</option>
+                                    <option value="hi">हिन्दी</option>
+                                    <option value="gu">ગુજરાતી</option>
+                                    <option value="mr">मराठी</option>
+                                </select>
+                                <InputError message={errors.locale} />
+                                <p className="text-xs text-muted-foreground">
+                                    Static interface copy, emails and
+                                    interpretations use this language when
+                                    available.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label htmlFor="email">Email address</Label>
 
                                 <Input
@@ -85,31 +105,6 @@ export default function Profile({
                                 />
                             </div>
 
-                            {mustVerifyEmail &&
-                                auth.user.email_verified_at === null && (
-                                    <div>
-                                        <p className="-mt-4 text-sm text-muted-foreground">
-                                            Your email address is unverified.{' '}
-                                            <Link
-                                                href={send()}
-                                                as="button"
-                                                className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                            >
-                                                Click here to re-send the
-                                                verification email.
-                                            </Link>
-                                        </p>
-
-                                        {status ===
-                                            'verification-link-sent' && (
-                                            <div className="mt-2 text-sm font-medium text-green-600">
-                                                A new verification link has been
-                                                sent to your email address.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
                             <div className="flex items-center gap-4">
                                 <Button
                                     disabled={processing}
@@ -121,6 +116,51 @@ export default function Profile({
                         </>
                     )}
                 </Form>
+            </div>
+
+            <div className="space-y-4">
+                <Heading
+                    variant="small"
+                    title="Plan & usage"
+                    description="Your current product access and billing cycle"
+                />
+                <Card className="rounded-2xl">
+                    <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
+                        <div>
+                            <p className="text-xs tracking-wider text-muted-foreground uppercase">
+                                Tier
+                            </p>
+                            <p className="mt-1 font-semibold capitalize">
+                                {auth.user.tier.replace('_', ' ')}
+                            </p>
+                        </div>
+                        {subscription?.current_period_end && (
+                            <div>
+                                <p className="text-xs tracking-wider text-muted-foreground uppercase">
+                                    Next billing date
+                                </p>
+                                <p className="mt-1 font-semibold">
+                                    {new Date(
+                                        subscription.current_period_end,
+                                    ).toLocaleDateString()}
+                                </p>
+                            </div>
+                        )}
+                        {auth.user.tier === 'tier_2' && (
+                            <div>
+                                <p className="text-xs tracking-wider text-muted-foreground uppercase">
+                                    Credit balance
+                                </p>
+                                <p className="mt-1 font-semibold">
+                                    {auth.user.credits_balance}
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Button asChild variant="outline">
+                    <Link href="/billing">Change plan</Link>
+                </Button>
             </div>
 
             <DeleteUser />

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\Billing\BillingGateway;
+use App\Services\Billing\RazorpayGateway;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(TenantContext::class);
+        $this->app->bind(BillingGateway::class, RazorpayGateway::class);
     }
 
     /**

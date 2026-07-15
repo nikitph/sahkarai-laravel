@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Contracts\Billing\BillingGateway;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\Account\AccountDeletionScheduled;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,8 +21,9 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         return Inertia::render('settings/profile', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => false,
             'status' => $request->session()->get('status'),
+            'subscription' => $request->user()->subscription,
         ]);
     }
 
@@ -46,13 +48,19 @@ class ProfileController extends Controller
     /**
      * Delete the user's profile.
      */
-    public function destroy(ProfileDeleteRequest $request): RedirectResponse
+    public function destroy(ProfileDeleteRequest $request, BillingGateway $gateway): RedirectResponse
     {
         $user = $request->user();
 
-        Auth::logout();
+        $subscription = $user->subscription;
+        if ($subscription?->provider_subscription_id) {
+            $gateway->cancel($subscription, false);
+        }
 
+        $user->forceFill(['hard_delete_at' => now()->addDays(30)])->save();
+        $user->notify(new AccountDeletionScheduled($user->getKey()));
         $user->delete();
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

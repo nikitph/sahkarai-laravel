@@ -2,28 +2,52 @@
 
 ## Product flow
 
-`Route → Form Request → Policy → Controller → Action/model → Audit/event → queued side effect → Inertia response`
+The regulatory pipeline is:
 
-The Projects module is the canonical vertical slice. Business logic belongs in an action when it is more than a simple persistence operation. Frontend code is TypeScript and uses Inertia, shadcn-style primitives, Tailwind and Motion; there is no SSR service.
+`scheduled poll → source adapter → acquire immutable original → extract text → AI interpretation → publish → notify eligible users`
 
-## Tenancy and authorization
+The user path is:
 
-Organizations share one PostgreSQL schema. Membership roles are owner, admin, member and viewer; roles map to typed permissions. `SetCurrentOrganization` establishes a request-scoped `TenantContext`. Tenant-owned Eloquent models use `BelongsToOrganization`, database keys include `organization_id`, and policies are the authorization boundary. This is application-enforced tenant isolation, not PostgreSQL native RLS.
+`authenticated route → policy → controller → action / query service → transactional write → queued side effect → Inertia response`
 
-The global scope is defense-in-depth, not PostgreSQL RLS and not permission logic. Raw SQL, jobs and scheduled commands must establish context explicitly. Cross-tenant denial tests are mandatory.
+Controllers validate and shape HTTP responses. Stateful domain transitions live in actions or jobs. External provider calls live behind AI agents, source adapters, or the billing gateway.
+
+## Ownership and authorization
+
+Product data is user-owned. Chats, messages, subscriptions, credit ledger rows, notifications, preferences, and views are reached through their owning user or protected by policies. SaaS admins receive operations metadata but cannot impersonate users, start chats, or read chat bodies.
+
+The initializer's organization infrastructure remains installed but dormant for v1. No product route creates organizations or memberships. This implementation uses Laravel session authentication and application-enforced ownership rather than the specs' Supabase-token vocabulary. Optional passkeys and 2FA are retained as a baseline strengthening.
+
+Regulatory documents, versions, interpretations, poll runs, and ingestion alerts are platform-owned. Browser users have no write routes for them. Only queued ingestion and interpretation code writes this corpus.
+
+## Data invariants
+
+- `(source, source_document_id)` identifies a regulatory document.
+- Original bytes are stored once at a canonical path and identified by SHA-256.
+- Each changed byte sequence creates a new immutable `document_version`; revisions link with `supersedes_id`.
+- A document version has at most one interpretation row. Locale payloads are generated independently with bounded retries and provenance.
+- A chat is permanently bound to one user and one document version.
+- Chat messages and credit-ledger entries are append-only. A user message and its one-credit debit happen atomically and idempotently.
+- Razorpay events are signature-verified and deduplicated before state transitions.
+- In-app/email delivery attempts are recorded independently.
+
+## AI boundary
+
+`RegulatoryInterpretationAgent` returns structured output with a 150–300 word summary, 3–7 takeaways, optional glossary, deadlines, fixed applicability tags, effective date, and document type. `GenerateLocaleInterpretation` validates provider output before persistence.
+
+`RegulatoryChatAgent` receives only the bound document version and that chat's immutable history. `ChatStreamController` streams Laravel AI SDK SSE output and persists the assistant response after completion. Context-limit checks and credit debits happen before the provider call.
+
+## Billing boundary
+
+Razorpay is authoritative for activation and renewal. Local checkout requests never grant access. Signed lifecycle webhooks activate tiers, reset monthly credits, apply prorated Tier 1→Tier 2 credits, and record failures. Downgrades are queued until the paid-period anniversary. A daily reconciliation job records drift and alerts ops.
 
 ## Runtime topology
 
-One immutable image runs web, worker, scheduler and Reverb roles with different commands. The image inherits the frozen multi-arch `ghcr.io/nikitph/laravel-runtime:1.0.0` digest. Classic FrankenPHP mode only. PostgreSQL-backed sessions, cache and queues are the single-host default. Reverb is a separate proxied Kamal service for WSS.
+One immutable image runs four roles with different commands:
 
-## Included product primitives
+- web: FrankenPHP/Inertia requests and streaming responses
+- worker: ingestion, extraction, AI, mail, billing, and cleanup jobs
+- scheduler: polls, digests, pending transitions, reconciliation, and purges
+- reverb: WebSocket transport
 
-- Fortify auth: registration, verification, reset, 2FA and passkeys
-- organization switching, memberships and queued invitations
-- typed RBAC permissions and policies
-- audit events and a tenant-aware reference module
-- Laravel AI SDK configuration/stubs
-- SSE/Reverb-ready runtime and queue/scheduler roles
-- CI and one-command `composer verify`
-
-Billing, social auth, object storage, webhooks and API tokens are intentionally seams, not pretend implementations. Add them when a real product requires them.
+PostgreSQL stores application state; Redis backs queues/cache. The frozen multi-arch runtime is `ghcr.io/nikitph/laravel-runtime:1.0.0`. Classic FrankenPHP mode is deliberate until concurrent request-state isolation is separately proven.

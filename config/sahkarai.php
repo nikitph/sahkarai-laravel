@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'ai' => [
+        'provider' => env('SAHKAR_AI_PROVIDER', 'deepseek'),
+        'interpretation_model' => env('SAHKAR_INTERPRETATION_MODEL', 'deepseek-chat'),
+        'chat_model' => env('SAHKAR_CHAT_MODEL', 'deepseek-chat'),
+        'prompt_version' => env('SAHKAR_PROMPT_VERSION', '2026-07-16.1'),
+        'interpretation_attempts' => (int) env('SAHKAR_INTERPRETATION_ATTEMPTS', 3),
+        'context_window_tokens' => (int) env('CONTEXT_WINDOW_TOKEN_THRESHOLD', 16000),
+    ],
+    'tiers' => [
+        'free' => ['monthly_price' => 0, 'monthly_credits' => 0],
+        'tier_1' => ['monthly_price' => 49900, 'monthly_credits' => 0],
+        'tier_2' => ['monthly_price' => 149900, 'monthly_credits' => 200],
+    ],
+    'credits' => [
+        'topup_url' => env('CREDIT_TOPUP_URL'),
+    ],
+    'ingestion' => [
+        'storage_disk' => env('REGULATORY_STORAGE_DISK', 'local'),
+        'backfill_months' => (int) env('REGULATORY_BACKFILL_MONTHS', 12),
+        'max_document_bytes' => (int) env('REGULATORY_MAX_DOCUMENT_BYTES', 52428800),
+        'sources' => [
+            'rbi' => ['feed_url' => env('RBI_FEED_URL')],
+            'income_tax' => ['feed_url' => env('INCOME_TAX_FEED_URL')],
+            'gst' => ['feed_url' => env('GST_FEED_URL')],
+        ],
+    ],
+    'razorpay' => [
+        'key_id' => env('RAZORPAY_KEY_ID'),
+        'key_secret' => env('RAZORPAY_KEY_SECRET'),
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+        'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
+        'plans' => [
+            'tier_1' => env('RAZORPAY_TIER_1_PLAN_ID'),
+            'tier_2' => env('RAZORPAY_TIER_2_PLAN_ID'),
+        ],
+    ],
+];

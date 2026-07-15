@@ -1,0 +1,45 @@
+# Open Questions
+
+Items that are ambiguous, contradictory, incomplete, or underspecified in the PRD. These
+should be settled with Product before the affected scenarios are taken as final. "Blocking?"
+means the scenarios cannot run without a concrete value.
+
+| ID | PRD Area | Question | Blocking? |
+|----|----------|----------|-----------|
+| OQ-PAY-001 | §10.2, §14 item 1 | Final pricing for Tier 1 monthly (₹499?) and Tier 2 monthly (₹1,499?). Are these placeholders or final? Are there annual variants planned post-launch? | No (placeholders documented); blocks production payment config |
+| OQ-PAY-002 | §10.3 | When Tier 1 → Tier 2 is prorated mid-cycle, how are credits prorated to remaining cycle days — ceil, floor, nearest integer, or a continuous balance? Example: 200 × 15/30 = 100; what if it's 200 × 13/30 = 86.67? | Yes — required to write a deterministic credits-granted assertion |
+| OQ-PAY-003 | §10.4 | Can a user rescind a queued downgrade before its effective date? (Currently assumed yes per ASSUMPTION-A008.) | No — but affects affordance design |
+| OQ-PAY-004 | §10.6 | Confirm which exact Razorpay webhook event identifiers will be handled: subscription.activated, subscription.charged, subscription.halted, subscription.cancelled, subscription.completed — plus one-off payment events for top-up. | Yes — required to bind webhook tests |
+| OQ-PAY-005 | §10.5 | "Razorpay retry policy applies": is the retry schedule fully controlled by Razorpay, or do we configure it? How many attempts before terminal? | Partial — required for retry-count assertion in `payment_failed_renewal.feature` |
+| OQ-PAY-006 | §9.2, §10.5 | When a user soft-deletes mid-cycle, the PRD says they're "not billed during the soft-delete window". Are pre-paid days refunded, or simply not refunded? | No — but copy needs to be correct |
+| OQ-INTERP-001 | §14 item 5 | AI model selection for interpretation generation vs. chat (likely different). Which models? | No — wired through configuration |
+| OQ-INTERP-002 | §5.1 | If extraction returned text but the AI fails to produce one Locale block while succeeding for others, is the partial Interpretation published, or does the whole row block on a global retry? | **Resolved 2026-05-19** — **partial publish, max 2 retries per locale**. Persist whatever locales the AI produced; missing locales fall back to English at read time via the §5.4 banner. Each missing locale gets up to 2 retry attempts; after that we accept the gap. If ALL 4 locales fail across all attempts, the Document Version is marked `interpretation_failed`. |
+| OQ-INTERP-003 | §5.5 | What happens to an `issue_reports` row when the bound Document Version is deleted/anonymised by hard-delete of the user who filed it vs. by ops? (Currently retained with anonymised user_id per §9.2 hard-delete rules.) | No |
+| OQ-INTERP-004 | §5.4 | What is the exact banner copy in each Locale? "This interpretation is not available in `<Locale>`. Showing the English version." is the English version; needs translations. | No — translation task |
+| OQ-CHAT-001 | §14 item 3, §8.7 | What is the concrete context-window threshold (token count) at which a Chat is set to `closed_context_full`? | **Resolved 2026-05-18** — configurable via `CONTEXT_WINDOW_TOKEN_THRESHOLD` env var; default **16,000 tokens** (~12k input budget for Sonnet, ~30–40 turns of regulatory Q&A). |
+| OQ-CHAT-002 | §14 item 4, §8.3 | Final Tier 2 monthly credit allowance — currently 200; subject to change based on usage modelling. | No — read from configuration |
+| OQ-CHAT-003 | §8.7 | If a user is mid-stream when the projected context exceeds the threshold, is the assistant response completed and then the chat is closed, or is the new send rejected outright? | **Resolved 2026-05-18** — **reject the send outright**. Project context size on the prospective input; if over threshold, flip status to `closed_context_full`, do not persist the message, do not debit a credit, render the §8.7 system message. Matches the feature file as written. |
+| OQ-CHAT-004 | §8.8 | The `insights` block in JSON exports — what is the canonical schema? Is it a list, a dict, or an opaque blob of artefacts? | Yes — required for export schema-stability tests |
+| OQ-NOTIF-001 | §7.1, §14 item 2 | Email provider choice (Postmark / Resend / Supabase native / other). Affects test mocks. | No — wired through configuration |
+| OQ-NOTIF-002 | §7.2 | The PRD's two triggers can both apply to the same user/Document Version (a revision the user viewed after subscription start). Do they produce one Notification or two? | **Resolved 2026-05-19** — **one Notification per (user, document_version)**. Dedup at the persistence layer via UNIQUE(user_id, document_version_id); the `prior_document_version_id` field carries the revision linkage regardless of which trigger fired first. |
+| OQ-NOTIF-003 | §7.3 | "Sources the User has disabled" — does this also suppress in-app, or only email? §7.4 says in-app is "always real-time, no cadence configuration" but doesn't say disable-source overrides in-app delivery. | **Resolved 2026-05-19** — **email only**. In-app is always real-time and always fires for eligible users; the per-Source disable only suppresses email dispatch. `notification_non_triggers.feature` scenarios bind against this resolution. |
+| OQ-NOTIF-004 | §7.2 | For revision notifications, does "viewed" require a Tier 1+ view (i.e. they saw the Interpretation), or any view (Free user opened the detail page)? | **Resolved 2026-05-19** — **any view counts**. A view event is recorded whenever a user opens the Document Version detail page, regardless of tier or whether the Interpretation block actually rendered. Tier-1+ gating on notification delivery is enforced separately at dispatch time. |
+| OQ-NOTIF-005 | §7.4 | Cadence "immediate", "daily_digest", "weekly_digest": at what local time do digests fire? In which timezone? Per-user or platform-wide? | Yes — required for cadence delivery tests |
+| OQ-ARCH-001 | §6.2 | Snippet length and highlight markup in search results — are these specified anywhere? | No |
+| OQ-ARCH-002 | §6.1 | Are filters multi-select within a facet (e.g. Source = [RBI, IT]) or single-select only? | Yes — affects browse query semantics |
+| OQ-ARCH-003 | §6.2 | Search ranks Hindi/Gujarati/Marathi behind English. Is there any user-facing affordance to bias toward vernacular? (Currently no.) | No |
+| OQ-RLS-001 | §2.5 | `saas_admin` ledger and subscription read scope — full row access or aggregated only? PRD is ambiguous. | Yes — affects support workflows |
+| OQ-RLS-002 | §2.5 | `saas_admin` cannot read chat message bodies. Does this also apply to `system` role messages (e.g. the "context limit reached" system message)? | No |
+| OQ-AUTH-001 | §3.2 | Confirm password-reset token TTL. PRD says "standard email-link reset flow" without a value. (Assumed 60min per Supabase default — ASSUMPTION-A003.) | No |
+| OQ-AUTH-002 | §3.1 | The PRD captures email but does not enforce verification. Is there a future plan to add a non-blocking verification CTA in the UI in v1, or does email_verified=false stay invisible to the user? | No |
+| OQ-AUTH-003 | §3.5 | "Manual DB assignment by another saas_admin" — is there an admin UI affordance for this, or strictly via DB console? | No |
+| OQ-ACCT-001 | §3.4, §9.2 | How does a user actually sign in to a soft-deleted account to restore it? Is there a separate "Restore" affordance, or does standard sign-in start a restoration flow if the account is soft-deleted? | Yes — affects `signin.feature` and `account_deletion.feature` |
+| OQ-ACCT-002 | §9.2 | At hard-delete time, the PRD says the user row is "removed or anonymised" — which? Anonymisation preserves analytic continuity; removal is cleaner. | Yes |
+| OQ-ACCT-003 | §9.1 | "Change email (no re-verification)" — is the old email retained anywhere (audit trail), or is it replaced in place? | No |
+| OQ-ING-001 | §4.1, §14 item 6 | Per-Source polling cadence — confirm "twice daily" is the v1 default for all three. May differ per Source. | No — wired through configuration |
+| OQ-ING-002 | §4.5 | If a revision arrives but the prior version's Interpretation is still being generated (race), what is the precedence? Is the prior generation aborted, or completed and then the revision generation starts? | Yes — race-condition behaviour |
+| OQ-ING-003 | §4.6 | Retry backoff schedule for failed Interpretation generation — exponential? linear? specific intervals? | No — provider-default acceptable |
+| OQ-ING-004 | §4.3 | If acquisition encounters a redirect (regulator moved a file), what is the policy? Follow N redirects? | No |
+| OQ-ING-005 | §4.4 | For HTML originals, does extraction strip nav/footer chrome, or just inline-text-extract everything? | No |
+| OQ-OPS-001 | §2.4 | What level of granularity does "user lookup by email" support — exact match only, prefix, or partial? | No |
+| OQ-NFR-001 | §12.4 | Best-effort SLA in v1 — explicit acknowledgement that no SLA scenarios are in scope. (Captured here so it isn't accidentally added later.) | No |

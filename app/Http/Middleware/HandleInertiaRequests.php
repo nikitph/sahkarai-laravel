@@ -39,9 +39,17 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'locale' => app()->getLocale(),
             'auth' => [
                 'user' => $request->user(),
             ],
+            'product' => fn () => $request->user() ? [
+                'tier' => $request->user()->tier,
+                'role' => $request->user()->role,
+                'locale' => $request->user()->locale,
+                'credits' => $request->user()->credits_balance,
+                'unread_notifications' => $request->user()->productNotifications()->whereNull('read_at')->count(),
+            ] : null,
             'organization' => fn () => $this->organizationProps($request),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
