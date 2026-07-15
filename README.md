@@ -41,7 +41,24 @@ Classic FrankenPHP mode is deliberate. Worker mode remains disabled until reques
 
 ## Production
 
-The Dockerfile pins the proven runtime by multi-arch index digest and produces an immutable app image without Node, dev dependencies or `.env`. `config/deploy.yml` runs web/worker/scheduler; `config/deploy.reverb.yml` deploys Reverb behind kamal-proxy on its own WSS host. Before deployment replace `YOUR_SERVER_IP`, product image names, registry credentials and all secrets.
+The Dockerfile pins the proven runtime by multi-arch index digest and produces an immutable app image without Node, dev dependencies or `.env`. `config/deploy.yml` runs web/worker/scheduler; `config/deploy.reverb.yml` deploys Reverb behind kamal-proxy on its own WSS host. Registry credentials and application secrets remain in the gitignored `.kamal/secrets` file.
+
+The current DigitalOcean deployment is available at [app.168.144.26.122.sslip.io](https://app.168.144.26.122.sslip.io). Deploy an already-published version with:
+
+```bash
+kamal deploy --version=<version> --skip-push
+kamal deploy -c config/deploy.reverb.yml --version=<version> --skip-push
+```
+
+Composer downloads in cross-platform builds should use GitHub authentication as an ephemeral BuildKit secret. The Dockerfile consumes `composer_auth` without storing it in an image layer:
+
+```bash
+export COMPOSER_AUTH="$(gh auth token | php -r '$token = trim(stream_get_contents(STDIN)); echo json_encode(["github-oauth" => ["github.com" => $token]]);')"
+docker buildx build --platform linux/amd64 \
+  --secret id=composer_auth,env=COMPOSER_AUTH \
+  --build-arg SERVICE=sahkarai-laravel \
+  -t ghcr.io/nikitph/sahkarai-laravel:<version> --push .
+```
 
 Keep these proven constraints:
 

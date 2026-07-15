@@ -2,6 +2,7 @@
 /bootstrap/ssr
 /node_modules
 /conformance/node_modules
+/.kamal/secrets
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot

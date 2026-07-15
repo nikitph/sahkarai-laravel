@@ -1,4 +1,4 @@
-# Kamal deploy for the runtime conformance harness.
+# Kamal deploy for the SahkarAI production application.
 # Deploys the ALREADY-PUBLISHED multi-arch image from GHCR (no build here).
 service: sahkarai-laravel
 # Runtime >=0.2.0-dev ships HEALTHCHECK NONE, so non-web roles need no workaround.
@@ -17,7 +17,7 @@ builder:
 servers:
   web:
     hosts:
-      - YOUR_SERVER_IP
+      - 168.144.26.122
     # Only the web role migrates. Kamal boots the primary web role to healthy
     # before any other role, so the schema exists before workers start — no
     # pre-deploy hook, no crash-looping workers.
@@ -31,20 +31,20 @@ servers:
         AUTORUN_LARAVEL_MIGRATION_ISOLATION: "false"
   worker:
     hosts:
-      - YOUR_SERVER_IP
+      - 168.144.26.122
     cmd: php artisan queue:work --tries=2 --sleep=1
     proxy: false
   scheduler:
     hosts:
-      - YOUR_SERVER_IP
+      - 168.144.26.122
     cmd: php artisan schedule:work
     proxy: false
 
 # kamal-proxy terminates :80 and forwards to the web role's app_port.
 # THE question this test exists to answer: does SSE survive this proxy?
 proxy:
-  ssl: false
-  host: app.YOUR_SERVER_IP.sslip.io
+  ssl: true
+  host: app.168.144.26.122.sslip.io
   app_port: 8080
   healthcheck:
     path: /up
@@ -55,7 +55,7 @@ env:
   clear:
     APP_ENV: production
     APP_DEBUG: "false"
-    APP_URL: http://YOUR_SERVER_IP
+    APP_URL: https://app.168.144.26.122.sslip.io
     LOG_CHANNEL: stderr
     LOG_STACK: stderr
     LOG_LEVEL: debug
@@ -73,9 +73,9 @@ env:
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
     REVERB_APP_KEY: conformancekey
-    REVERB_HOST: ws.YOUR_SERVER_IP.sslip.io   # via kamal-proxy
-    REVERB_PORT: "80"
-    REVERB_SCHEME: http
+    REVERB_HOST: ws.168.144.26.122.sslip.io   # via kamal-proxy
+    REVERB_PORT: "443"
+    REVERB_SCHEME: https
 
     PHP_OPCACHE_VALIDATE_TIMESTAMPS: "0"   # production: full opcache benefit
     HEALTHCHECK_PATH: /up
@@ -87,7 +87,7 @@ env:
 accessories:
   postgres:
     image: postgres:17-alpine
-    host: YOUR_SERVER_IP
+    host: 168.144.26.122
     env:
       clear:
         POSTGRES_DB: app
@@ -96,3 +96,8 @@ accessories:
         - POSTGRES_PASSWORD
     directories:
       - data:/var/lib/postgresql/data
+
+ssh:
+  user: root
+  keys:
+    - ~/.ssh/sahkarai_laravel_deploy

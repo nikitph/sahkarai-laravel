@@ -4,8 +4,14 @@ import WebSocket from "ws";
 
 const key = process.env.REVERB_APP_KEY || "conformancekey";
 const host = process.env.TARGET_HOST || "127.0.0.1";
-const socketUrl = `ws://${host}:${process.env.REVERB_PORT || 8080}/app/${key}?protocol=7&client=node&version=1.0`;
-const triggerUrl = process.env.TRIGGER_URL || `http://${host}:${process.env.WEB_PORT || 8002}/conformance/broadcast`;
+const socketScheme = process.env.REVERB_SCHEME || "ws";
+const webScheme = process.env.WEB_SCHEME || "http";
+const socketPort = process.env.REVERB_PORT || 8080;
+const webPort = process.env.WEB_PORT || 8002;
+const socketUrl = `${socketScheme}://${host}:${socketPort}/app/${key}?protocol=7&client=node&version=1.0`;
+const triggerUrl =
+    process.env.TRIGGER_URL ||
+    `${webScheme}://${host}:${webPort}/conformance/broadcast`;
 
 const fail = (message) => {
     console.error(`WebSocket conformance failed: ${message}`);

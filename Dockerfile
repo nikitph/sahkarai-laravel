@@ -16,7 +16,11 @@ FROM ${RUNTIME} AS vendor
 USER root
 WORKDIR /build
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+RUN --mount=type=secret,id=composer_auth \
+    if [ -f /run/secrets/composer_auth ]; then \
+        export COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
+    fi; \
+    composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 
