@@ -67,4 +67,19 @@ class ConformanceTest extends TestCase
         $this->assertSame('text/event-stream; charset=utf-8', $response->headers->get('Content-Type'));
         $this->assertStringContainsString('event: done', $response->streamedContent());
     }
+
+    public function test_forwarded_https_requests_generate_secure_asset_urls(): void
+    {
+        $response = $this
+            ->withHeaders([
+                'X-Forwarded-Host' => 'app.example.test',
+                'X-Forwarded-Port' => '443',
+                'X-Forwarded-Proto' => 'https',
+            ])
+            ->get('/');
+
+        $response->assertOk();
+        $response->assertSee('https://app.example.test/build/', false);
+        $response->assertDontSee('http://app.example.test/build/', false);
+    }
 }

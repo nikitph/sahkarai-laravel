@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The application container is only exposed through Kamal's internal
+        // proxy. Trust its forwarded scheme/host so HTTPS asset URLs, secure
+        // cookies and generated links reflect the original client request.
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
