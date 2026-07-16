@@ -53,7 +53,7 @@ class VerifyProviders extends Command
 
         $response = RegulatoryInterpretationAgent::make()->prompt(
             <<<'PROMPT'
-Write an English (en) interpretation of this synthetic conformance document.
+Write an English (en) interpretation of this synthetic conformance document. The summary must contain 180-220 space-separated words. Count it before returning the structured response; a shorter abstract fails conformance.
 
 The regulator directs urban cooperative banks to review their cyber incident response plan, assign an accountable officer, conduct one annual exercise, and retain the exercise report. The direction takes effect on 2026-09-01. This synthetic text is used only to verify the configured AI provider and must not be stored as regulatory content.
 PROMPT,

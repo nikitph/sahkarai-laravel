@@ -35,6 +35,6 @@ The source contract contains 59 Gherkin feature files. TypeScript files alongsid
 
 Last offline conformance run (2026-07-16): 97 tests passed with no skips and 542 assertions. ESLint, Prettier, TypeScript, Pint, PHPStan, Vite production build, PostgreSQL 17 clean/upgrade migrations, Docker health, PostgreSQL full-text search, and compiled browser checks passed.
 
-## Pending live credentials
+## Live provider status
 
-Automated tests use Laravel AI SDK fakes and signed Razorpay fixtures. The deterministic suite has no credential-dependent tests or skips. `php artisan sahkarai:providers:verify` is the repeatable live gate for Laravel AI SDK structured output and read-only Razorpay plan validation; one real checkout/webhook cycle remains a separate test-mode exercise. Those live checks remain pending until credentials are supplied. No production secret is required or committed for offline conformance.
+Automated tests use Laravel AI SDK fakes and signed Razorpay fixtures. The deterministic suite has no credential-dependent tests or skips. On 2026-07-16, `php artisan sahkarai:providers:verify --only=ai` passed against DeepSeek for both validated structured output and streaming; the provider reported `deepseek-v4-flash`. No key was stored in source or the image. Razorpay read-only plan validation and one real test-mode checkout/webhook cycle remain pending until those credentials are supplied.

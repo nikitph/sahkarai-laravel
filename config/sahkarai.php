@@ -5,7 +5,7 @@ return [
         'provider' => env('SAHKAR_AI_PROVIDER', 'deepseek'),
         'interpretation_model' => env('SAHKAR_INTERPRETATION_MODEL', 'deepseek-chat'),
         'chat_model' => env('SAHKAR_CHAT_MODEL', 'deepseek-chat'),
-        'prompt_version' => env('SAHKAR_PROMPT_VERSION', '2026-07-16.1'),
+        'prompt_version' => env('SAHKAR_PROMPT_VERSION', '2026-07-16.2'),
         'interpretation_attempts' => (int) env('SAHKAR_INTERPRETATION_ATTEMPTS', 3),
         'context_window_tokens' => (int) env('CONTEXT_WINDOW_TOKEN_THRESHOLD', 16000),
     ],

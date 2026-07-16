@@ -71,4 +71,4 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 - **Static/build checks** protect PHP types/formatting and the React/TypeScript production bundle.
 - **PostgreSQL checks** protect database-specific migrations, JSONB, locking, and weighted full-text search that SQLite cannot prove.
 - **Container/browser checks** protect the shipped FrankenPHP image, worker/scheduler/Reverb roles, compiled assets and user-facing navigation.
-- **Live-provider checks** are intentionally the final layer: DeepSeek and Razorpay test mode require credentials and are tracked separately from deterministic offline conformance.
+- **Live-provider checks** are the final layer: DeepSeek structured output and streaming passed live on 2026-07-16 (`deepseek-v4-flash`); Razorpay test-mode plan and checkout/webhook validation remains pending and is tracked separately from deterministic offline conformance.
