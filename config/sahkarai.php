@@ -17,6 +17,15 @@ return [
     'credits' => [
         'topup_url' => env('CREDIT_TOPUP_URL'),
     ],
+    'realtime' => [
+        // Sent to authenticated Inertia clients at request time. Keeping these
+        // values out of the Vite build makes one immutable image deployable to
+        // every environment without rebuilding its frontend assets.
+        'key' => env('REVERB_PUBLIC_APP_KEY', env('REVERB_APP_KEY')),
+        'host' => env('REVERB_PUBLIC_HOST', env('REVERB_HOST')),
+        'port' => (int) env('REVERB_PUBLIC_PORT', env('REVERB_PORT', 443)),
+        'scheme' => env('REVERB_PUBLIC_SCHEME', env('REVERB_SCHEME', 'https')),
+    ],
     'ingestion' => [
         'storage_disk' => env('REGULATORY_STORAGE_DISK', 'local'),
         'backfill_months' => (int) env('REGULATORY_BACKFILL_MONTHS', 12),

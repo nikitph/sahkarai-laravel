@@ -72,8 +72,15 @@ The specs mention Supabase sessions, dormant TOTP, and database RLS. This applic
 The Dockerfile produces one immutable image without Node, development dependencies, or `.env`. Kamal runs the same image as web, worker, scheduler, and Reverb roles. The existing DigitalOcean configuration is under `config/deploy.yml` and `config/deploy.reverb.yml`.
 
 ```bash
+kamal accessory boot redis
 kamal deploy --version=<version> --skip-push
 kamal deploy -c config/deploy.reverb.yml --version=<version> --skip-push
 ```
 
-Classic FrankenPHP mode remains deliberate. Secrets belong in the gitignored `.kamal/secrets` file or the deployment secret store, never in an image layer.
+The Redis accessory supplies queues, cache, and isolated migration locks; PostgreSQL remains the durable application database. Classic FrankenPHP mode remains deliberate. Secrets belong in the gitignored `.kamal/secrets` file or the deployment secret store, never in an image layer.
+
+After placing DeepSeek and Razorpay test credentials in the environment, run the read-only live provider gate before enabling traffic:
+
+```bash
+php artisan sahkarai:providers:verify
+```

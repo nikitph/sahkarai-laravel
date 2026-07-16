@@ -2,12 +2,19 @@
 
 namespace App\Notifications\Billing;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class BillingStatusMail extends Notification
+class BillingStatusMail extends Notification implements ShouldQueue
 {
-    public function __construct(private readonly string $title, private readonly string $message) {}
+    use Queueable;
+
+    public function __construct(private readonly string $title, private readonly string $message)
+    {
+        $this->afterCommit();
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

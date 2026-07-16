@@ -7,6 +7,7 @@ use App\Actions\Chat\SendChatMessage;
 use App\Actions\Ingestion\AcquireDocument;
 use App\Actions\Interpretations\GenerateLocaleInterpretation;
 use App\Actions\Notifications\NotifyRegulatoryUpdate;
+use App\Ai\Agents\ProviderProbeAgent;
 use App\Ai\Agents\RegulatoryChatAgent;
 use App\Ai\Agents\RegulatoryInterpretationAgent;
 use App\Contracts\Billing\BillingGateway;
@@ -18,6 +19,7 @@ use App\Enums\RegulatorySource;
 use App\Enums\SubscriptionStatus;
 use App\Enums\SupportedLocale;
 use App\Enums\Tier;
+use App\Events\ProductNotificationCreated;
 use App\Jobs\Account\PurgeExpiredAccounts;
 use App\Jobs\Billing\ApplyPendingSubscriptionChanges;
 use App\Jobs\Billing\ReconcileSubscriptions;
@@ -71,6 +73,7 @@ class SahkarAiProductTest extends TestCase
         $user = User::where('email', 'asha@example.test')->firstOrFail();
         $this->assertSame(Tier::Free, $user->tier);
         $this->assertSame('gu', $user->locale->value);
+        $this->assertNull($user->email_verified_at);
         $this->assertNull($user->current_organization_id);
         $this->assertDatabaseHas('subscriptions', ['user_id' => $user->id, 'tier' => 'free', 'status' => 'free']);
         $this->assertDatabaseHas('notification_preferences', [
@@ -126,6 +129,33 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame(2, $owner->refresh()->credits_balance);
         $this->assertDatabaseCount('credit_ledger', 1);
         $this->assertDatabaseCount('chat_messages', 2);
+    }
+
+    public function test_an_interrupted_ai_stream_can_resume_without_a_second_message_debit(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2(2)->create();
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+        $requestId = (string) Str::uuid();
+        $action = app(SendChatMessage::class);
+
+        $pending = $action->prepare($user, $chat, 'Resume this message.', $requestId);
+        $this->assertNull($pending);
+        $this->assertSame(1, $user->refresh()->credits_balance);
+        $this->assertDatabaseCount('chat_messages', 1);
+        $this->assertDatabaseCount('credit_ledger', 1);
+
+        RegulatoryChatAgent::fake(['Recovered grounded answer.'])->preventStrayPrompts();
+        $answer = $action->handle($user->refresh(), $chat->refresh(), 'Resume this message.', $requestId);
+
+        $this->assertSame('assistant', $answer->role);
+        $this->assertSame(1, $user->refresh()->credits_balance);
+        $this->assertDatabaseCount('chat_messages', 2);
+        $this->assertDatabaseCount('credit_ledger', 1);
     }
 
     public function test_context_limit_closes_chat_without_debiting_or_persisting_message(): void
@@ -295,6 +325,127 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseCount('credit_ledger', 1);
     }
 
+    public function test_razorpay_webhook_rejects_missing_configuration_and_invalid_signatures(): void
+    {
+        $payload = ['event' => 'subscription.activated', 'payload' => []];
+        $body = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        config(['sahkarai.razorpay.webhook_secret' => null]);
+        $this->call('POST', route('webhooks.razorpay'), server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_RAZORPAY_SIGNATURE' => hash_hmac('sha256', $body, ''),
+        ], content: $body)->assertServiceUnavailable();
+
+        config(['sahkarai.razorpay.webhook_secret' => 'configured-secret']);
+        $this->call('POST', route('webhooks.razorpay'), server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: $body)->assertUnauthorized();
+        $this->call('POST', route('webhooks.razorpay'), server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_RAZORPAY_SIGNATURE' => 'invalid',
+        ], content: $body)->assertUnauthorized();
+
+        $this->assertDatabaseCount('processed_webhooks', 0);
+    }
+
+    public function test_razorpay_lifecycle_failures_and_refunds_apply_the_contract(): void
+    {
+        Notification::fake();
+        $cases = [
+            ['subscription.activated', SubscriptionStatus::Active, Tier::Tier1],
+            ['subscription.halted', SubscriptionStatus::Halted, Tier::Tier2],
+            ['subscription.cancelled', SubscriptionStatus::Cancelled, Tier::Free],
+            ['subscription.completed', SubscriptionStatus::Completed, Tier::Free],
+        ];
+
+        foreach ($cases as $index => [$event, $expectedStatus, $expectedTier]) {
+            $startingTier = $event === 'subscription.activated' ? Tier::Free : Tier::Tier2;
+            $user = User::factory()->create(['tier' => $startingTier, 'credits_balance' => $startingTier === Tier::Tier2 ? 25 : 0]);
+            $subscription = $user->subscription()->create([
+                'provider_subscription_id' => "sub_lifecycle_{$index}",
+                'tier' => $event === 'subscription.activated' ? Tier::Tier1 : Tier::Tier2,
+                'status' => $event === 'subscription.activated' ? SubscriptionStatus::Pending : SubscriptionStatus::Active,
+                'current_period_end' => now()->addMonth(),
+            ]);
+            app(ProcessRazorpayWebhook::class)->handle("lifecycle_evt_{$index}", [
+                'event' => $event,
+                'payload' => ['subscription' => ['entity' => ['id' => $subscription->provider_subscription_id]]],
+            ]);
+
+            $this->assertSame($expectedStatus, $subscription->refresh()->status);
+            $this->assertSame($expectedTier, $user->refresh()->tier);
+        }
+
+        $failedUser = User::factory()->tier2(100)->create();
+        $failedSubscription = $failedUser->subscription()->create([
+            'provider_subscription_id' => 'sub_failed_payment',
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Active,
+            'current_period_end' => now()->addMonth(),
+        ]);
+        app(ProcessRazorpayWebhook::class)->handle('payment_failed_evt', [
+            'event' => 'payment.failed',
+            'payload' => ['payment' => ['entity' => ['subscription_id' => $failedSubscription->provider_subscription_id]]],
+        ]);
+        $this->assertSame(Tier::Tier2, $failedUser->refresh()->tier);
+        $this->assertDatabaseHas('product_notifications', ['user_id' => $failedUser->id, 'type' => 'billing_failed']);
+        $this->assertDatabaseHas('notification_deliveries', ['user_id' => $failedUser->id, 'channel' => 'in_app', 'status' => 'delivered']);
+        $this->assertDatabaseHas('notification_deliveries', ['user_id' => $failedUser->id, 'channel' => 'email', 'status' => 'queued']);
+
+        app(ProcessRazorpayWebhook::class)->handle('refund_evt', [
+            'event' => 'payment.refunded',
+            'payload' => [
+                'payment' => ['entity' => ['subscription_id' => $failedSubscription->provider_subscription_id]],
+                'refund' => ['entity' => ['notes' => ['credits_delta' => -25]]],
+            ],
+        ]);
+        $this->assertSame(75, $failedUser->refresh()->credits_balance);
+        $this->assertDatabaseHas('credit_ledger', [
+            'user_id' => $failedUser->id,
+            'amount' => -25,
+            'reason' => 'adjustment',
+            'idempotency_key' => 'razorpay-refund:refund_evt',
+        ]);
+    }
+
+    public function test_live_provider_verifier_contract_is_repeatable_with_provider_fakes(): void
+    {
+        config([
+            'ai.providers.deepseek.key' => 'deepseek-test-key',
+            'sahkarai.ai.provider' => 'deepseek',
+            'sahkarai.ai.interpretation_model' => 'deepseek-chat',
+            'sahkarai.razorpay.key_id' => 'rzp_test_key',
+            'sahkarai.razorpay.key_secret' => 'rzp_test_secret',
+            'sahkarai.razorpay.webhook_secret' => 'webhook_test_secret',
+            'sahkarai.razorpay.plans.tier_1' => 'plan_tier_1',
+            'sahkarai.razorpay.plans.tier_2' => 'plan_tier_2',
+        ]);
+        RegulatoryInterpretationAgent::fake([[
+            'locale' => 'en',
+            'summary' => implode(' ', array_fill(0, 150, 'word')),
+            'takeaways' => ['Review the plan.', 'Assign an officer.', 'Retain the report.'],
+            'glossary' => [],
+            'deadlines' => [['due_date' => '2026-09-01', 'description' => 'Direction takes effect.']],
+            'applicability_tags' => ['ucb'],
+            'effective_date' => '2026-09-01',
+            'document_type' => 'circular',
+        ]])->preventStrayPrompts();
+        ProviderProbeAgent::fake(['Provider conformance is working.'])->preventStrayPrompts();
+        Http::fake([
+            '*/plans/plan_tier_1' => Http::response([
+                'id' => 'plan_tier_1', 'period' => 'monthly', 'interval' => 1,
+                'item' => ['currency' => 'INR', 'amount' => 49900],
+            ]),
+            '*/plans/plan_tier_2' => Http::response([
+                'id' => 'plan_tier_2', 'period' => 'monthly', 'interval' => 1,
+                'item' => ['currency' => 'INR', 'amount' => 149900],
+            ]),
+        ]);
+
+        $this->artisan('sahkarai:providers:verify')->assertSuccessful();
+        Http::assertSentCount(2);
+    }
+
     public function test_new_paid_subscription_launches_checkout_without_granting_access(): void
     {
         config(['sahkarai.razorpay.key_id' => 'rzp_test_key']);
@@ -320,7 +471,8 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $user->id,
             'provider_subscription_id' => 'sub_checkout_1',
-            'tier' => 'tier_1',
+            'tier' => 'free',
+            'pending_tier' => 'tier_1',
             'status' => 'pending',
         ]);
         $this->assertDatabaseMissing('credit_ledger', ['user_id' => $user->id]);
@@ -666,6 +818,16 @@ class SahkarAiProductTest extends TestCase
             collect(SupportedLocale::cases())->pluck('value')->all(),
             array_keys($version->interpretation->locale_payloads),
         );
+
+        $publishedAt = $version->interpretation->published_at;
+        $generatedAt = $version->interpretation->generated_at;
+        RegulatoryInterpretationAgent::fake([])->preventStrayPrompts();
+        (new GenerateInterpretation($version->id))->handle(
+            app(GenerateLocaleInterpretation::class),
+            app(NotifyRegulatoryUpdate::class),
+        );
+        $this->assertTrue($version->interpretation->refresh()->published_at?->equalTo($publishedAt));
+        $this->assertTrue($version->interpretation->generated_at?->equalTo($generatedAt));
     }
 
     public function test_interpretation_generation_marks_terminal_failure_after_three_locale_attempts(): void
@@ -1069,6 +1231,31 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseHas('issue_reports', ['id' => $issue->id, 'user_id' => null]);
     }
 
+    public function test_account_deletion_immediately_cancels_provider_billing_and_sets_the_grace_window(): void
+    {
+        Notification::fake();
+        Carbon::setTestNow('2026-05-15 10:00:00');
+        $user = User::factory()->tier2()->create();
+        $subscription = $user->subscription()->create([
+            'provider_subscription_id' => 'sub_delete_now',
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Active,
+        ]);
+        $gateway = Mockery::mock(BillingGateway::class);
+        $gateway->expects('cancel')->withArgs(fn ($actual, $atCycleEnd) => $actual->is($subscription) && $atCycleEnd === false)
+            ->andReturn(['id' => 'sub_delete_now', 'status' => 'cancelled']);
+        $this->app->instance(BillingGateway::class, $gateway);
+
+        $this->actingAs($user)->delete(route('profile.destroy'), ['password' => 'password'])
+            ->assertRedirect(route('home'));
+
+        $deleted = User::withTrashed()->findOrFail($user->id);
+        $this->assertTrue($deleted->trashed());
+        $this->assertSame('2026-06-14 10:00:00', $deleted->hard_delete_at?->format('Y-m-d H:i:s'));
+        $this->assertGuest();
+        Carbon::setTestNow();
+    }
+
     public function test_tier_two_account_settings_expose_only_the_owners_credit_ledger(): void
     {
         $alice = User::factory()->tier2()->create(['credits_balance' => 9]);
@@ -1121,6 +1308,37 @@ class SahkarAiProductTest extends TestCase
         $this->actingAs($alice)->patch(route('notifications.read-all'))->assertRedirect();
         $this->assertNotNull($second->refresh()->read_at);
         $this->assertNull($foreign->refresh()->read_at);
+    }
+
+    public function test_product_notifications_broadcast_only_on_the_owners_private_channel(): void
+    {
+        config()->set('sahkarai.realtime', [
+            'key' => 'browser-key',
+            'host' => 'ws.example.test',
+            'port' => 443,
+            'scheme' => 'https',
+        ]);
+        $user = User::factory()->tier1()->create();
+        $notification = ProductNotification::create([
+            'user_id' => $user->id,
+            'type' => 'regulatory_update',
+            'title' => 'New RBI circular',
+            'body' => 'A new interpretation is ready.',
+            'data' => ['document_id' => 42],
+        ]);
+        $event = new ProductNotificationCreated($notification);
+
+        $this->assertSame("private-App.Models.User.{$user->id}", $event->broadcastOn()[0]->name);
+        $this->assertSame('product.notification.created', $event->broadcastAs());
+        $this->assertSame($notification->id, $event->broadcastWith()['id']);
+        $this->assertSame(['document_id' => 42], $event->broadcastWith()['data']);
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('realtime.key', 'browser-key')
+                ->where('realtime.host', 'ws.example.test')
+                ->where('realtime.port', 443)
+                ->where('realtime.scheme', 'https'));
     }
 
     public function test_chat_exports_cover_all_formats_statuses_metadata_and_ownership(): void
@@ -1196,6 +1414,7 @@ class SahkarAiProductTest extends TestCase
         Carbon::setTestNow('2026-06-01 00:00:00');
         Notification::fake();
         (new ApplyPendingSubscriptionChanges)->handle();
+        (new ApplyPendingSubscriptionChanges)->handle();
 
         $this->assertSame(Tier::Tier1, $user->refresh()->tier);
         $this->assertSame(0, $user->credits_balance);
@@ -1204,6 +1423,26 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseHas('product_notifications', ['user_id' => $user->id, 'type' => 'billing_downgraded']);
         $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'in_app', 'status' => 'delivered']);
         $this->assertDatabaseHas('notification_deliveries', ['user_id' => $user->id, 'channel' => 'email', 'status' => 'queued']);
+        $this->assertSame(1, ProductNotification::query()->where('user_id', $user->id)->where('type', 'billing_downgraded')->count());
+        $this->assertSame(2, $user->productNotifications()->firstOrFail()->deliveries()->count());
+    }
+
+    public function test_billing_transition_worker_ignores_soft_deleted_accounts(): void
+    {
+        $user = User::factory()->tier2(50)->create(['hard_delete_at' => now()->addDays(30)]);
+        $subscription = $user->subscription()->create([
+            'provider_subscription_id' => 'sub_deleted_user',
+            'tier' => Tier::Tier2,
+            'status' => SubscriptionStatus::Halted,
+            'current_period_end' => now()->subMinute(),
+        ]);
+        $user->delete();
+
+        (new ApplyPendingSubscriptionChanges)->handle();
+
+        $this->assertSame(SubscriptionStatus::Halted, $subscription->refresh()->status);
+        $this->assertSame(Tier::Tier2, $subscription->tier);
+        $this->assertDatabaseMissing('product_notifications', ['user_id' => $user->id]);
     }
 
     public function test_reconciliation_records_provider_drift_and_exposes_an_ops_alert(): void

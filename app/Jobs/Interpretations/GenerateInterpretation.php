@@ -31,6 +31,9 @@ class GenerateInterpretation implements ShouldQueue
             ['document_version_id' => $version->getKey()],
             ['status' => 'generating', 'locale_payloads' => [], 'failed_locales' => [], 'locale_attempts' => []],
         );
+        if (in_array($interpretation->status, ['published', 'partial', 'failed'], true)) {
+            return;
+        }
 
         $payloads = $interpretation->locale_payloads ?? [];
         $failures = $interpretation->failed_locales ?? [];

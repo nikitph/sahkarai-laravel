@@ -21,18 +21,17 @@ servers:
     # Only the web role migrates. Kamal boots the primary web role to healthy
     # before any other role, so the schema exists before workers start — no
     # pre-deploy hook, no crash-looping workers.
-    # ISOLATION stays false: `migrate --isolated` locks via the cache_locks TABLE,
-    # which the migrations themselves create, so on a fresh DB it can never
-    # bootstrap. It would need a shared non-DB lock (Redis).
+    # Redis supplies the shared migration lock, so overlapping deploys cannot
+    # race migrations even on a brand-new database.
     env:
       clear:
         AUTORUN_ENABLED: "true"
         AUTORUN_LARAVEL_MIGRATION: "true"
-        AUTORUN_LARAVEL_MIGRATION_ISOLATION: "false"
+        AUTORUN_LARAVEL_MIGRATION_ISOLATION: "true"
   worker:
     hosts:
       - 168.144.26.122
-    cmd: php artisan queue:work --tries=2 --sleep=1
+    cmd: php artisan queue:work --tries=2 --sleep=1 --timeout=180 --max-time=3600
     proxy: false
   scheduler:
     hosts:
@@ -67,8 +66,12 @@ env:
     DB_USERNAME: app
 
     SESSION_DRIVER: database
-    QUEUE_CONNECTION: database
-    CACHE_STORE: database
+    QUEUE_CONNECTION: redis
+    CACHE_STORE: redis
+    REDIS_CLIENT: phpredis
+    REDIS_HOST: sahkarai-laravel-redis
+    REDIS_PORT: "6379"
+    REDIS_QUEUE_RETRY_AFTER: "240"
 
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
@@ -76,6 +79,9 @@ env:
     REVERB_HOST: ws.168.144.26.122.sslip.io   # via kamal-proxy
     REVERB_PORT: "443"
     REVERB_SCHEME: https
+    REVERB_PUBLIC_HOST: ws.168.144.26.122.sslip.io
+    REVERB_PUBLIC_PORT: "443"
+    REVERB_PUBLIC_SCHEME: https
 
     PHP_OPCACHE_VALIDATE_TIMESTAMPS: "0"   # production: full opcache benefit
     HEALTHCHECK_PATH: /up
@@ -83,6 +89,12 @@ env:
     - APP_KEY
     - DB_PASSWORD
     - REVERB_APP_SECRET
+    - DEEPSEEK_API_KEY
+    - RAZORPAY_KEY_ID
+    - RAZORPAY_KEY_SECRET
+    - RAZORPAY_WEBHOOK_SECRET
+    - RAZORPAY_TIER_1_PLAN_ID
+    - RAZORPAY_TIER_2_PLAN_ID
 
 # Immutable regulatory originals must outlive image/container replacement. Web
 # serves downloads while workers acquire/extract, so every app role mounts the
@@ -102,6 +114,12 @@ accessories:
         - POSTGRES_PASSWORD
     directories:
       - data:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    host: 168.144.26.122
+    cmd: redis-server --appendonly yes
+    directories:
+      - data:/data
 
 ssh:
   user: root

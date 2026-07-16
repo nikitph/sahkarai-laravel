@@ -40,6 +40,7 @@ export function AppSidebar() {
                       title: t('notifications'),
                       href: '/notifications',
                       icon: Bell,
+                      badge: product?.unread_notifications,
                   },
               ]
             : []),

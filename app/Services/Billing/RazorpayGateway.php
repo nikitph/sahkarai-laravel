@@ -8,14 +8,20 @@ use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 class RazorpayGateway implements BillingGateway
 {
     /** @return array<string, mixed> */
     public function createSubscription(User $user, Tier $tier): array
     {
+        $planId = (string) config("sahkarai.razorpay.plans.{$tier->value}");
+        if ($planId === '') {
+            throw new RuntimeException("No Razorpay plan is configured for {$tier->value}.");
+        }
+
         return $this->client()->post('/subscriptions', [
-            'plan_id' => config("sahkarai.razorpay.plans.{$tier->value}"),
+            'plan_id' => $planId,
             'total_count' => 120,
             'customer_notify' => 1,
             'notes' => ['user_id' => (string) $user->getKey(), 'tier' => $tier->value],
@@ -25,8 +31,13 @@ class RazorpayGateway implements BillingGateway
     /** @return array<string, mixed> */
     public function changePlan(Subscription $subscription, Tier $tier, bool $atCycleEnd): array
     {
+        $planId = (string) config("sahkarai.razorpay.plans.{$tier->value}");
+        if ($planId === '') {
+            throw new RuntimeException("No Razorpay plan is configured for {$tier->value}.");
+        }
+
         return $this->client()->patch("/subscriptions/{$subscription->provider_subscription_id}", [
-            'plan_id' => config("sahkarai.razorpay.plans.{$tier->value}"),
+            'plan_id' => $planId,
             'schedule_change_at' => $atCycleEnd ? 'cycle_end' : 'now',
             'customer_notify' => 1,
         ])->throw()->json();

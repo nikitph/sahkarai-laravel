@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 'credits' => $request->user()->credits_balance,
                 'unread_notifications' => $request->user()->productNotifications()->whereNull('read_at')->count(),
             ] : null,
+            'realtime' => fn () => $request->user() ? config('sahkarai.realtime') : null,
             'organization' => fn () => $this->organizationProps($request),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

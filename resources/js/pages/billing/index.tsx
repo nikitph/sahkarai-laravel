@@ -189,6 +189,16 @@ export default function Billing({
                         </Button>
                     </div>
                 )}
+                {subscription.status === 'pending' &&
+                    subscription.pending_tier && (
+                        <div className="mx-auto mb-6 max-w-3xl rounded-xl border border-sky-200 bg-sky-50 p-4 text-center text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                            Razorpay checkout for{' '}
+                            {subscription.pending_tier.replace('_', ' ')} is
+                            pending. Your current plan and access remain
+                            unchanged until a signed payment webhook confirms
+                            activation.
+                        </div>
+                    )}
                 {subscription.tier === 'tier_1' && (
                     <div className="mx-auto mb-6 max-w-3xl rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-center text-sm text-indigo-950 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-100">
                         Upgrading to Intelligence is prorated for the remainder

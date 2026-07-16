@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\ProductNotificationCreated;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,5 +41,10 @@ class ProductNotification extends Model
     public function deliveries(): HasMany
     {
         return $this->hasMany(NotificationDelivery::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(fn (ProductNotification $notification) => ProductNotificationCreated::dispatch($notification));
     }
 }

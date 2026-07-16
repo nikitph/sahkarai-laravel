@@ -55,7 +55,7 @@ services:
   worker:
     image: ${APP_IMAGE:-sahkarai-laravel:local}
     env_file: .env
-    command: php artisan queue:work --tries=2 --sleep=1 --max-time=3600
+    command: php artisan queue:work --tries=2 --sleep=1 --timeout=180 --max-time=3600
     volumes:
       - appstorage:/var/www/html/storage/app
     depends_on:

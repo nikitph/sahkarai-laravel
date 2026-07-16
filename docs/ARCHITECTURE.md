@@ -30,12 +30,13 @@ Regulatory documents, versions, interpretations, poll runs, and ingestion alerts
 - Chat messages and credit-ledger entries are append-only. A user message and its one-credit debit happen atomically and idempotently.
 - Razorpay events are signature-verified and deduplicated before state transitions.
 - In-app/email delivery attempts are recorded independently.
+- New in-app notifications broadcast after commit only on the owning user's authenticated Reverb private channel; Echo refreshes the open centre, updates the unread badge and shows an application-wide toast. Public socket coordinates are shared at request time so the immutable frontend image is environment-independent.
 
 ## AI boundary
 
 `RegulatoryInterpretationAgent` returns structured output with a 150–300 word summary, 3–7 takeaways, optional glossary, deadlines, fixed applicability tags, effective date, and document type. `GenerateLocaleInterpretation` validates provider output before persistence.
 
-`RegulatoryChatAgent` receives only the bound document version and that chat's immutable history. `ChatStreamController` streams Laravel AI SDK SSE output and persists the assistant response after completion. Context-limit checks and credit debits happen before the provider call.
+`RegulatoryChatAgent` receives only the bound document version and that chat's immutable history. `ChatStreamController` streams Laravel AI SDK SSE output and persists the assistant response after completion. Context-limit checks and credit debits happen before the provider call. A disconnected or failed stream can resume with the same request ID without a second debit; per-chat row locks serialize context and completion writes.
 
 ## Billing boundary
 

@@ -20,7 +20,7 @@ class ChatStreamController extends Controller
             'request_id' => ['required', 'uuid'],
         ]);
         $existing = $messages->prepare($request->user(), $chat, $validated['message'], $validated['request_id']);
-        abort_if($existing !== null, 409, 'This message request was already processed.');
+        abort_if($existing?->role === 'assistant', 409, 'This message request was already completed.');
 
         $chat->unsetRelation('messages');
 

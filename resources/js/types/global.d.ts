@@ -27,6 +27,12 @@ declare module '@inertiajs/core' {
                 credits: number;
                 unread_notifications: number;
             } | null;
+            realtime: {
+                key: string | null;
+                host: string | null;
+                port: number;
+                scheme: string;
+            } | null;
             flash: { success?: string; error?: string };
             sidebarOpen: boolean;
             [key: string]: unknown;

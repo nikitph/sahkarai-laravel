@@ -6,6 +6,8 @@ use App\Contracts\Billing\BillingGateway;
 use App\Enums\SubscriptionStatus;
 use App\Enums\Tier;
 use App\Http\Controllers\Controller;
+use App\Models\Subscription;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,8 +24,10 @@ class BillingController extends Controller
         return Inertia::render('billing/index', [
             'subscription' => $subscription,
             'plans' => config('sahkarai.tiers'),
-            'razorpayKey' => config('sahkarai.razorpay.key_id'),
-            'checkout' => $request->session()->pull('razorpay_checkout'),
+            'checkout' => $request->session()->pull('razorpay_checkout')
+                ?? ($subscription->status === SubscriptionStatus::Pending && $subscription->pending_tier
+                    ? $this->checkoutPayload($request->user(), $subscription, $subscription->pending_tier)
+                    : null),
         ]);
     }
 
@@ -34,7 +38,13 @@ class BillingController extends Controller
         $subscription = $request->user()->subscription()->firstOrCreate([], ['tier' => Tier::Free, 'status' => SubscriptionStatus::Free]);
         $this->authorize('update', $subscription);
 
-        if ($subscription->provider_subscription_id) {
+        if ($subscription->provider_subscription_id && $subscription->status === SubscriptionStatus::Pending) {
+            if ($subscription->pending_tier !== $tier) {
+                $provider = $gateway->changePlan($subscription, $tier, false);
+                $subscription->update(['pending_tier' => $tier, 'provider_payload' => $provider]);
+            }
+            $request->session()->put('razorpay_checkout', $this->checkoutPayload($request->user(), $subscription, $tier));
+        } elseif ($subscription->provider_subscription_id) {
             $isDowngrade = $subscription->tier === Tier::Tier2 && $tier === Tier::Tier1;
             $transition = [
                 'from' => $subscription->tier->value,
@@ -58,17 +68,11 @@ class BillingController extends Controller
             abort_if($providerId === '', 502, 'Razorpay did not return a subscription identifier.');
             $subscription->update([
                 'provider_subscription_id' => $providerId,
-                'tier' => $tier,
+                'pending_tier' => $tier,
                 'status' => SubscriptionStatus::Pending,
                 'provider_payload' => $provider,
             ]);
-            $request->session()->put('razorpay_checkout', [
-                'key' => (string) config('sahkarai.razorpay.key_id'),
-                'subscription_id' => $providerId,
-                'tier' => $tier->value,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-            ]);
+            $request->session()->put('razorpay_checkout', $this->checkoutPayload($request->user(), $subscription, $tier));
         }
 
         return back()->with('success', 'Your plan change is ready. Complete any payment requested by Razorpay.');
@@ -94,5 +98,17 @@ class BillingController extends Controller
         $subscription->update(['pending_tier' => null, 'cancel_at' => null, 'provider_payload' => $provider]);
 
         return back()->with('success', 'The scheduled plan change was cancelled.');
+    }
+
+    /** @return array<string, string> */
+    private function checkoutPayload(User $user, Subscription $subscription, Tier $tier): array
+    {
+        return [
+            'key' => (string) config('sahkarai.razorpay.key_id'),
+            'subscription_id' => (string) $subscription->provider_subscription_id,
+            'tier' => $tier->value,
+            'name' => $user->name,
+            'email' => $user->email,
+        ];
     }
 }

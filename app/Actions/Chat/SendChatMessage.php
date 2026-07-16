@@ -18,7 +18,7 @@ class SendChatMessage
     public function handle(User $user, Chat $chat, string $content, string $requestId): ChatMessage
     {
         $existing = $this->prepare($user, $chat, $content, $requestId);
-        if ($existing) {
+        if ($existing?->role === 'assistant') {
             return $existing;
         }
 
@@ -39,47 +39,69 @@ class SendChatMessage
 
     public function prepare(User $user, Chat $chat, string $content, string $requestId): ?ChatMessage
     {
-        $existing = ChatMessage::query()->where('request_id', $requestId)->first();
-        if ($existing) {
-            abort_unless($existing->chat_id === $chat->getKey(), 409);
+        $contextClosed = false;
+        $result = DB::transaction(function () use ($user, $chat, $content, $requestId, &$contextClosed): ?ChatMessage {
+            $lockedChat = Chat::query()->whereKey($chat->getKey())->lockForUpdate()->firstOrFail();
+            abort_unless($lockedChat->user_id === $user->getKey(), 403);
 
-            return $chat->messages()->where('metadata->request_id', $requestId)->where('role', 'assistant')->first() ?? $existing;
-        }
+            $existing = ChatMessage::query()->where('request_id', $requestId)->first();
+            if ($existing) {
+                abort_unless($existing->chat_id === $lockedChat->getKey(), 409);
+                abort_unless(hash_equals($existing->content, $content), 409, 'This request identifier belongs to a different message.');
 
-        $tokens = $this->estimateTokens($content);
-        $threshold = (int) config('sahkarai.ai.context_window_tokens');
-        if ($chat->status !== 'active' || $chat->context_tokens + $tokens > $threshold) {
-            if ($chat->status === 'active') {
-                $chat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
+                $assistant = $lockedChat->messages()->where('metadata->request_id', $requestId)->where('role', 'assistant')->first();
+                if ($assistant) {
+                    return $assistant;
+                }
+                abort_unless($lockedChat->status === 'active', 409, 'This incomplete message belongs to a closed chat.');
+
+                return $existing;
             }
-            throw ValidationException::withMessages(['message' => 'This chat has reached its context limit. Start a new chat to continue.']);
-        }
 
-        DB::transaction(function () use ($user, $chat, $content, $requestId, $tokens): void {
-            $message = $chat->messages()->create([
+            $tokens = $this->estimateTokens($content);
+            $threshold = (int) config('sahkarai.ai.context_window_tokens');
+            if ($lockedChat->status !== 'active' || $lockedChat->context_tokens + $tokens > $threshold) {
+                if ($lockedChat->status === 'active') {
+                    $lockedChat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
+                    $contextClosed = true;
+
+                    return null;
+                }
+                throw ValidationException::withMessages(['message' => 'This chat has reached its context limit. Start a new chat to continue.']);
+            }
+
+            $message = $lockedChat->messages()->create([
                 'role' => 'user',
                 'content' => $content,
                 'token_count' => $tokens,
                 'request_id' => $requestId,
             ]);
             $this->credits->handle($user, -1, CreditReason::DebitMessage, "chat-message:{$requestId}", $message);
-            $chat->increment('context_tokens', $tokens);
+            $lockedChat->increment('context_tokens', $tokens);
+
+            return null;
         }, attempts: 3);
 
-        return null;
+        if ($contextClosed) {
+            throw ValidationException::withMessages(['message' => 'This chat has reached its context limit. Start a new chat to continue.']);
+        }
+
+        return $result;
     }
 
     /** @param array<string, mixed> $usage */
     public function complete(Chat $chat, string $requestId, string $content, int $completionTokens, ?string $model, ?string $provider, array $usage): ChatMessage
     {
-        $existing = $chat->messages()->where('metadata->request_id', $requestId)->where('role', 'assistant')->first();
-        if ($existing) {
-            return $existing;
-        }
         $answerTokens = $completionTokens ?: $this->estimateTokens($content);
 
         return DB::transaction(function () use ($chat, $requestId, $content, $answerTokens, $model, $provider, $usage): ChatMessage {
-            $message = $chat->messages()->create([
+            $lockedChat = Chat::query()->whereKey($chat->getKey())->lockForUpdate()->firstOrFail();
+            $existing = $lockedChat->messages()->where('metadata->request_id', $requestId)->where('role', 'assistant')->first();
+            if ($existing) {
+                return $existing;
+            }
+
+            $message = $lockedChat->messages()->create([
                 'role' => 'assistant',
                 'content' => $content,
                 'token_count' => $answerTokens,
@@ -91,9 +113,9 @@ class SendChatMessage
                     'insight' => $this->extractInsight($content),
                 ],
             ]);
-            $chat->increment('context_tokens', $answerTokens);
-            if ($chat->fresh()->context_tokens > (int) config('sahkarai.ai.context_window_tokens')) {
-                $chat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
+            $lockedChat->increment('context_tokens', $answerTokens);
+            if ($lockedChat->context_tokens > (int) config('sahkarai.ai.context_window_tokens')) {
+                $lockedChat->update(['status' => 'closed_context_full', 'context_closed_at' => now(), 'closed_at' => now()]);
             }
 
             return $message;

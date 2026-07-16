@@ -13,7 +13,10 @@ class RegulatoryUpdateMail extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public readonly RegulatoryDocument $document) {}
+    public function __construct(public readonly RegulatoryDocument $document)
+    {
+        $this->afterCommit();
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

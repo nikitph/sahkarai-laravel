@@ -2,13 +2,20 @@
 
 namespace App\Notifications\Account;
 
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\URL;
 
-class AccountDeletionScheduled extends Notification
+class AccountDeletionScheduled extends Notification implements ShouldQueue
 {
-    public function __construct(private readonly int $userId) {}
+    use Queueable;
+
+    public function __construct(private readonly int $userId)
+    {
+        $this->afterCommit();
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

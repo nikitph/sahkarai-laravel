@@ -44,9 +44,13 @@ env:
     DB_PORT: "5432"
     DB_DATABASE: app
     DB_USERNAME: app
-    CACHE_STORE: database
+    CACHE_STORE: redis
     SESSION_DRIVER: database
-    QUEUE_CONNECTION: database
+    QUEUE_CONNECTION: redis
+    REDIS_CLIENT: phpredis
+    REDIS_HOST: sahkarai-laravel-redis
+    REDIS_PORT: "6379"
+    REDIS_QUEUE_RETRY_AFTER: "240"
 
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance

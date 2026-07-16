@@ -10,6 +10,7 @@ use App\Notifications\Account\AccountDeletionScheduled;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -63,7 +64,8 @@ class ProfileController extends Controller
         }
 
         $user->forceFill(['hard_delete_at' => now()->addDays(30)])->save();
-        $user->notify(new AccountDeletionScheduled($user->getKey()));
+        Notification::route('mail', [$user->email => $user->name])
+            ->notify(new AccountDeletionScheduled($user->getKey()));
         $user->delete();
         Auth::logout();
 

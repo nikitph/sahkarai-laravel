@@ -52,7 +52,7 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 | `interpretation/interpretation_terminal_failure` | 4 | three-attempt terminal failure, ops count and unavailable UI state; generation failure tests |
 | `non_functional/auditability` | 6 | immutable messages/ledger, fixed `CreditReason`, delivery records and timestamps; immutability/delivery tests |
 | `non_functional/ops_dashboard` | 4 | source health, separate extraction/interpretation counts, open issues/alerts and user lookup; ops tests |
-| `notifications/notification_channels` | 4 | immediate in-app center, owner-scoped read/read-all, immutable per-channel delivery log; center tests |
+| `notifications/notification_channels` | 4 | after-commit owner-private Reverb/Echo delivery, realtime unread badge/toast, owner-scoped read/read-all, uniquely deduplicated per-channel delivery log; channel, center and compiled-browser tests |
 | `notifications/notification_non_triggers` | 3 | backfill, failed interpretation and disabled-source guards; notification tests |
 | `notifications/notification_preferences` | 6 | per-source enabled/cadence only, locale delivery and strict cadence validation; preference/UI tests |
 | `notifications/notification_triggers` | 4 | subscription-start and prior-version-view eligibility with idempotent dedupe; trigger tests |

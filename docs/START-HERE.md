@@ -9,4 +9,4 @@ SahkarAI is now a product application, not a generic starter. The Gherkin files 
 5. Preserve document-version immutability, user ownership, webhook idempotency, and ledger append-only rules.
 6. Run `composer verify` before committing.
 
-For live AI/payment work, add the DeepSeek and Razorpay values documented in `.env.example`. Never insert provider calls directly in controllers: AI calls go through Laravel AI SDK agents; payment state changes are confirmed by signed Razorpay webhooks.
+For live AI/payment work, add the DeepSeek and Razorpay values documented in `.env.example`, then run `php artisan sahkarai:providers:verify`. The command uses Laravel AI SDK structured output and read-only Razorpay plan lookups. Never insert provider calls directly in controllers: AI calls go through Laravel AI SDK agents; payment state changes are confirmed by signed Razorpay webhooks.

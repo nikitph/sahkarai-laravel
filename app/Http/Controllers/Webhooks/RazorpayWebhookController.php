@@ -13,7 +13,9 @@ class RazorpayWebhookController extends Controller
     {
         $body = $request->getContent();
         $signature = (string) $request->header('X-Razorpay-Signature');
-        $expected = hash_hmac('sha256', $body, (string) config('sahkarai.razorpay.webhook_secret'));
+        $secret = (string) config('sahkarai.razorpay.webhook_secret');
+        abort_if($secret === '', 503, 'Razorpay webhooks are not configured.');
+        $expected = hash_hmac('sha256', $body, $secret);
         abort_unless($signature !== '' && hash_equals($expected, $signature), 401, 'Invalid webhook signature.');
 
         $payload = $request->json()->all();
