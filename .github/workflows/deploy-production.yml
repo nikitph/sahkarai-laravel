@@ -77,7 +77,7 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_laravel_deploy
           chmod 600 ~/.ssh/sahkarai_laravel_deploy
-          ssh-keyscan -H 168.144.26.122 >> ~/.ssh/known_hosts
+          printf '%s\n' '168.144.26.122 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGEM0eqt2Ao3XzNHbNoA0O6j/Xc1FN/a6AoCdEpW8pYp' > ~/.ssh/known_hosts
 
       - name: Map GitHub secrets into Kamal
         run: |
