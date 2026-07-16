@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'auth' => [
+        // Temporary operational escape hatch for environments without outbound
+        // mail. Product access never depends on this flag; it only controls the
+        // persisted email verification timestamp.
+        'auto_verify_email' => (bool) env('AUTO_VERIFY_EMAIL', false),
+    ],
     'ai' => [
         'provider' => env('SAHKAR_AI_PROVIDER', 'deepseek'),
         'interpretation_model' => env('SAHKAR_INTERPRETATION_MODEL', 'deepseek-chat'),

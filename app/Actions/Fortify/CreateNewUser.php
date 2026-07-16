@@ -37,6 +37,10 @@ class CreateNewUser implements CreatesNewUsers
                 'locale' => $input['locale'] ?? SupportedLocale::English->value,
             ]);
 
+            if (config('sahkarai.auth.auto_verify_email')) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
+
             $user->subscription()->create([
                 'tier' => Tier::Free,
                 'status' => SubscriptionStatus::Free,

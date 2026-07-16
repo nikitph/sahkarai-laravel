@@ -61,6 +61,19 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
+    public function test_changed_email_is_marked_verified_when_auto_verification_is_enabled(): void
+    {
+        config(['sahkarai.auth.auto_verify_email' => true]);
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'updated@example.com',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertNotNull($user->refresh()->email_verified_at);
+    }
+
     public function test_user_can_delete_their_account()
     {
         $user = User::factory()->create();

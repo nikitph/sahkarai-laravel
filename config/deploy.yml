@@ -55,6 +55,7 @@ env:
     APP_ENV: production
     APP_DEBUG: "false"
     APP_URL: https://app.168.144.26.122.sslip.io
+    AUTO_VERIFY_EMAIL: "true"
     LOG_CHANNEL: stderr
     LOG_STACK: stderr
     LOG_LEVEL: debug

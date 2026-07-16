@@ -36,4 +36,18 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
     }
+
+    public function test_new_users_are_marked_verified_when_auto_verification_is_enabled(): void
+    {
+        config(['sahkarai.auth.auto_verify_email' => true]);
+
+        $this->post(route('register.store'), [
+            'name' => 'Test User',
+            'email' => 'verified@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertNotNull(auth()->user()?->email_verified_at);
+    }
 }
