@@ -10,6 +10,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { Button } from '@/components/ui/button';
 
 const features = [
@@ -73,42 +74,6 @@ const plans = [
     },
 ];
 
-function SahkarMark({ className = 'size-11' }: { className?: string }) {
-    return (
-        <svg className={className} viewBox="0 0 160 100" aria-hidden="true">
-            <defs>
-                <linearGradient
-                    id="sahkar-ribbon"
-                    x1="10%"
-                    y1="10%"
-                    x2="90%"
-                    y2="90%"
-                >
-                    <stop offset="0%" stopColor="#4f46e5" />
-                    <stop offset="52%" stopColor="#7c3aed" />
-                    <stop offset="100%" stopColor="#c026d3" />
-                </linearGradient>
-            </defs>
-            <path
-                d="M31 42a17 17 0 1 0 21 27l24-24a17 17 0 0 1 4-3"
-                fill="none"
-                stroke="url(#sahkar-ribbon)"
-                strokeWidth="9"
-                strokeLinecap="round"
-            />
-            <path
-                d="M129 42a17 17 0 1 1-21 27L84 45a17 17 0 0 0-4-3"
-                fill="none"
-                stroke="url(#sahkar-ribbon)"
-                strokeWidth="9"
-                strokeLinecap="round"
-            />
-            <circle cx="43" cy="25" r="7" fill="#6366f1" />
-            <circle cx="117" cy="25" r="7" fill="#c026d3" />
-        </svg>
-    );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
         <div className="mb-7 flex items-center gap-4 text-[11px] font-semibold tracking-[0.22em] text-slate-500 uppercase dark:text-slate-400">
@@ -125,32 +90,32 @@ export default function Welcome() {
     return (
         <>
             <Head title="Regulatory intelligence for Indian co-operatives" />
-            <main className="min-h-screen overflow-hidden bg-[#f7f7fb] text-[#17171d] selection:bg-indigo-200 dark:bg-[#0b0b11] dark:text-slate-50 dark:selection:bg-indigo-900">
+            <main className="min-h-screen overflow-hidden bg-[#f7f7fb] text-[#17171d] selection:bg-sky-200 dark:bg-[#0b0b11] dark:text-slate-50 dark:selection:bg-teal-900">
                 <header className="sticky top-0 z-50 border-b border-black/5 bg-[#f7f7fb]/85 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b11]/85">
                     <nav className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-6 lg:px-12">
                         <Link
                             href="/"
                             className="flex items-center gap-2.5 font-semibold tracking-tight"
                         >
-                            <SahkarMark />
+                            <AppLogoIcon className="h-11 w-16" />
                             <span className="text-lg">SahkarAI</span>
                         </Link>
                         <div className="hidden items-center gap-9 text-sm text-slate-600 md:flex dark:text-slate-300">
                             <a
                                 href="#features"
-                                className="transition-colors hover:text-indigo-600"
+                                className="transition-colors hover:text-teal-600"
                             >
                                 Features
                             </a>
                             <a
                                 href="#workflow"
-                                className="transition-colors hover:text-indigo-600"
+                                className="transition-colors hover:text-teal-600"
                             >
                                 How it works
                             </a>
                             <a
                                 href="#pricing"
-                                className="transition-colors hover:text-indigo-600"
+                                className="transition-colors hover:text-teal-600"
                             >
                                 Pricing
                             </a>
@@ -189,13 +154,13 @@ export default function Welcome() {
                         className="pointer-events-none absolute inset-0 opacity-45 dark:opacity-20"
                         style={{
                             backgroundImage:
-                                'linear-gradient(to right, rgba(79,70,229,.09) 1px, transparent 1px), linear-gradient(to bottom, rgba(79,70,229,.09) 1px, transparent 1px)',
+                                'linear-gradient(to right, rgba(13,148,136,.09) 1px, transparent 1px), linear-gradient(to bottom, rgba(13,148,136,.09) 1px, transparent 1px)',
                             backgroundSize: '72px 72px',
                             maskImage:
                                 'linear-gradient(to bottom, black, transparent 88%)',
                         }}
                     />
-                    <div className="pointer-events-none absolute -top-48 right-[-12rem] size-[44rem] rounded-full bg-fuchsia-400/15 blur-[130px]" />
+                    <div className="pointer-events-none absolute -top-48 right-[-12rem] size-[44rem] rounded-full bg-emerald-400/15 blur-[130px]" />
                     <div className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-[1400px] items-center gap-16 px-6 py-20 lg:grid-cols-[1.12fr_.88fr] lg:px-12 lg:py-28">
                         <motion.div
                             initial={{ opacity: 0, y: 24 }}
@@ -207,7 +172,7 @@ export default function Welcome() {
                             </SectionLabel>
                             <h1 className="max-w-4xl text-[clamp(4rem,9vw,8.7rem)] leading-[0.83] font-semibold tracking-[-0.07em] text-balance">
                                 From circular
-                                <span className="block bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text pb-3 text-transparent">
+                                <span className="block bg-gradient-to-r from-sky-600 via-teal-600 to-emerald-600 bg-clip-text pb-3 text-transparent">
                                     to clarity.
                                 </span>
                             </h1>
@@ -222,7 +187,7 @@ export default function Welcome() {
                                     <Button
                                         asChild
                                         size="lg"
-                                        className="h-13 rounded-full px-7 shadow-lg shadow-indigo-900/15"
+                                        className="h-13 rounded-full px-7 shadow-lg shadow-teal-900/15"
                                     >
                                         <Link href={primaryHref}>
                                             {auth.user
@@ -246,11 +211,11 @@ export default function Welcome() {
                             transition={{ delay: 0.15, duration: 0.75 }}
                             className="relative mx-auto w-full max-w-xl"
                         >
-                            <div className="absolute inset-8 rounded-[2.5rem] bg-indigo-500/20 blur-3xl" />
-                            <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/85 p-3 shadow-[0_35px_100px_-40px_rgba(49,46,129,.45)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
+                            <div className="absolute inset-8 rounded-[2.5rem] bg-teal-500/20 blur-3xl" />
+                            <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/85 p-3 shadow-[0_35px_100px_-40px_rgba(15,118,110,.4)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/85">
                                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                                     <div>
-                                        <p className="text-[10px] font-semibold tracking-[0.2em] text-indigo-600 uppercase">
+                                        <p className="text-[10px] font-semibold tracking-[0.2em] text-teal-600 uppercase">
                                             Latest publication
                                         </p>
                                         <p className="mt-1 text-sm font-semibold">
@@ -263,7 +228,7 @@ export default function Welcome() {
                                 </div>
                                 <div className="grid gap-3 p-3 sm:grid-cols-[.82fr_1.18fr]">
                                     <div className="flex min-h-64 flex-col rounded-2xl bg-slate-950 p-5 text-white">
-                                        <FileCheck2 className="size-7 text-violet-300" />
+                                        <FileCheck2 className="size-7 text-sky-300" />
                                         <div className="mt-auto">
                                             <p className="text-xs text-slate-400">
                                                 Original document
@@ -285,9 +250,9 @@ export default function Welcome() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="rounded-2xl bg-indigo-50 p-5 dark:bg-indigo-950/50">
+                                    <div className="rounded-2xl bg-teal-50 p-5 dark:bg-teal-950/50">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                                            <span className="text-xs font-semibold text-teal-700 dark:text-teal-300">
                                                 Plain-language interpretation
                                             </span>
                                             <span className="text-[10px] text-slate-500">
@@ -308,7 +273,7 @@ export default function Welcome() {
                                                     key={item}
                                                     className="flex items-start gap-3 rounded-xl bg-white/70 p-3 text-xs dark:bg-slate-900/60"
                                                 >
-                                                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-indigo-600 text-[10px] text-white">
+                                                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-teal-600 text-[10px] text-white">
                                                         {index + 1}
                                                     </span>
                                                     <span className="pt-0.5 text-slate-700 dark:text-slate-200">
@@ -376,7 +341,7 @@ export default function Welcome() {
                                     <span className="font-mono text-xs text-slate-400">
                                         {feature.number}
                                     </span>
-                                    <span className="grid size-12 place-items-center rounded-full border border-black/10 text-indigo-600 transition-transform group-hover:scale-110 group-hover:-rotate-6 dark:border-white/10 dark:text-indigo-300">
+                                    <span className="grid size-12 place-items-center rounded-full border border-black/10 text-teal-600 transition-transform group-hover:scale-110 group-hover:-rotate-6 dark:border-white/10 dark:text-teal-300">
                                         <feature.icon className="size-5" />
                                     </span>
                                 </div>
@@ -452,12 +417,12 @@ export default function Welcome() {
 
                 <section className="mx-auto max-w-[1400px] px-6 py-28 lg:px-12 lg:py-40">
                     <div className="grid overflow-hidden rounded-[2rem] border border-black/10 lg:grid-cols-2 dark:border-white/10">
-                        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-10 text-white md:p-16">
+                        <div className="bg-gradient-to-br from-sky-600 to-teal-700 p-10 text-white md:p-16">
                             <ShieldCheck className="size-10" />
                             <h2 className="mt-20 text-5xl leading-[.96] font-semibold tracking-[-0.05em]">
                                 AI that keeps the source in view.
                             </h2>
-                            <p className="mt-7 max-w-lg text-lg leading-8 text-indigo-100">
+                            <p className="mt-7 max-w-lg text-lg leading-8 text-sky-100">
                                 SahkarAI helps you read and investigate
                                 regulatory material. It does not hide the
                                 publication, blur versions together, or present
@@ -483,7 +448,7 @@ export default function Welcome() {
                                     key={title}
                                     className="flex gap-5 border-b border-black/10 py-8 first:pt-0 last:border-0 last:pb-0 dark:border-white/10"
                                 >
-                                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-teal-100 text-xs font-semibold text-teal-700 dark:bg-teal-950 dark:text-teal-300">
                                         0{index + 1}
                                     </span>
                                     <div>
@@ -524,15 +489,15 @@ export default function Welcome() {
                             {plans.map((plan, index) => (
                                 <article
                                     key={plan.name}
-                                    className={`relative flex flex-col rounded-3xl border p-8 lg:p-10 ${plan.featured ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xl shadow-indigo-900/20' : 'border-black/10 bg-[#f7f7fb] dark:border-white/10 dark:bg-slate-900'}`}
+                                    className={`relative flex flex-col rounded-3xl border p-8 lg:p-10 ${plan.featured ? 'border-teal-600 bg-teal-600 text-white shadow-2xl shadow-teal-900/20' : 'border-black/10 bg-[#f7f7fb] dark:border-white/10 dark:bg-slate-900'}`}
                                 >
                                     {plan.featured && (
-                                        <span className="absolute -top-3 left-8 rounded-full bg-white px-3 py-1 text-[10px] font-bold tracking-[.16em] text-indigo-700 uppercase">
+                                        <span className="absolute -top-3 left-8 rounded-full bg-white px-3 py-1 text-[10px] font-bold tracking-[.16em] text-teal-700 uppercase">
                                             Most useful
                                         </span>
                                     )}
                                     <span
-                                        className={`font-mono text-xs ${plan.featured ? 'text-indigo-200' : 'text-slate-400'}`}
+                                        className={`font-mono text-xs ${plan.featured ? 'text-teal-200' : 'text-slate-400'}`}
                                     >
                                         0{index + 1}
                                     </span>
@@ -540,7 +505,7 @@ export default function Welcome() {
                                         {plan.name}
                                     </h3>
                                     <p
-                                        className={`mt-2 min-h-12 text-sm leading-6 ${plan.featured ? 'text-indigo-100' : 'text-slate-500'}`}
+                                        className={`mt-2 min-h-12 text-sm leading-6 ${plan.featured ? 'text-teal-100' : 'text-slate-500'}`}
                                     >
                                         {plan.description}
                                     </p>
@@ -551,7 +516,7 @@ export default function Welcome() {
                                             {plan.price}
                                         </span>
                                         <span
-                                            className={`ml-2 text-sm ${plan.featured ? 'text-indigo-200' : 'text-slate-500'}`}
+                                            className={`ml-2 text-sm ${plan.featured ? 'text-teal-200' : 'text-slate-500'}`}
                                         >
                                             / month
                                         </span>
@@ -566,7 +531,7 @@ export default function Welcome() {
                                                 <span
                                                     className={
                                                         plan.featured
-                                                            ? 'text-indigo-50'
+                                                            ? 'text-teal-50'
                                                             : 'text-slate-600 dark:text-slate-300'
                                                     }
                                                 >
@@ -601,9 +566,9 @@ export default function Welcome() {
 
                 <section className="mx-auto max-w-[1400px] px-6 py-24 lg:px-12 lg:py-32">
                     <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 px-8 py-16 text-white md:px-16 md:py-24">
-                        <div className="pointer-events-none absolute -right-32 -bottom-48 size-[34rem] rounded-full border-[80px] border-indigo-500/20" />
+                        <div className="pointer-events-none absolute -right-32 -bottom-48 size-[34rem] rounded-full border-[80px] border-emerald-500/20" />
                         <div className="relative max-w-4xl">
-                            <p className="text-xs font-semibold tracking-[.2em] text-violet-300 uppercase">
+                            <p className="text-xs font-semibold tracking-[.2em] text-emerald-300 uppercase">
                                 Begin with the source
                             </p>
                             <h2 className="mt-6 text-5xl leading-[.94] font-semibold tracking-[-.055em] md:text-7xl">
@@ -633,7 +598,7 @@ export default function Welcome() {
                 <footer className="border-t border-black/5 dark:border-white/10">
                     <div className="mx-auto flex max-w-[1400px] flex-col justify-between gap-8 px-6 py-10 md:flex-row md:items-center lg:px-12">
                         <div className="flex items-center gap-2">
-                            <SahkarMark className="size-9" />
+                            <AppLogoIcon className="h-9 w-14" />
                             <span className="font-semibold">SahkarAI</span>
                         </div>
                         <p className="max-w-xl text-xs leading-5 text-slate-500">
@@ -642,22 +607,13 @@ export default function Welcome() {
                             advice.
                         </p>
                         <div className="flex gap-6 text-sm text-slate-500">
-                            <a
-                                href="#features"
-                                className="hover:text-indigo-600"
-                            >
+                            <a href="#features" className="hover:text-teal-600">
                                 Features
                             </a>
-                            <a
-                                href="#pricing"
-                                className="hover:text-indigo-600"
-                            >
+                            <a href="#pricing" className="hover:text-teal-600">
                                 Pricing
                             </a>
-                            <Link
-                                href="/login"
-                                className="hover:text-indigo-600"
-                            >
+                            <Link href="/login" className="hover:text-teal-600">
                                 Sign in
                             </Link>
                         </div>
