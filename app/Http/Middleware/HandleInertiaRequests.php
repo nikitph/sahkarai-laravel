@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'role' => $request->user()->role,
                 'locale' => $request->user()->locale,
                 'credits' => $request->user()->credits_balance,
+                'personalized_chat' => $request->user()->tier->canPersonalizeChat(),
                 'unread_notifications' => $request->user()->productNotifications()->whereNull('read_at')->count(),
             ] : null,
             'realtime' => fn () => $request->user() ? config('sahkarai.realtime') : null,

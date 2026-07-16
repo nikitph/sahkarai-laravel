@@ -154,7 +154,8 @@ export default function Profile({
                                 </p>
                             </div>
                         )}
-                        {auth.user.tier === 'tier_2' && (
+                        {(auth.user.tier === 'tier_2' ||
+                            auth.user.tier === 'tier_3') && (
                             <div>
                                 <p className="text-xs tracking-wider text-muted-foreground uppercase">
                                     Credit balance
@@ -169,52 +170,56 @@ export default function Profile({
                 <Button asChild variant="outline">
                     <Link href="/billing">Change plan</Link>
                 </Button>
-                {auth.user.tier === 'tier_2' && creditLedger.length > 0 && (
-                    <Card className="rounded-2xl">
-                        <CardContent className="p-5">
-                            <p className="mb-3 text-sm font-semibold">
-                                Recent credit activity
-                            </p>
-                            <div className="divide-y text-sm">
-                                {creditLedger.map((entry) => (
-                                    <div
-                                        key={entry.id}
-                                        className="flex items-center justify-between gap-4 py-3"
-                                    >
-                                        <div>
-                                            <p className="capitalize">
-                                                {entry.reason.replaceAll(
-                                                    '_',
-                                                    ' ',
-                                                )}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(
-                                                    entry.created_at,
-                                                ).toLocaleString()}
-                                            </p>
+                {(auth.user.tier === 'tier_2' || auth.user.tier === 'tier_3') &&
+                    creditLedger.length > 0 && (
+                        <Card className="rounded-2xl">
+                            <CardContent className="p-5">
+                                <p className="mb-3 text-sm font-semibold">
+                                    Recent credit activity
+                                </p>
+                                <div className="divide-y text-sm">
+                                    {creditLedger.map((entry) => (
+                                        <div
+                                            key={entry.id}
+                                            className="flex items-center justify-between gap-4 py-3"
+                                        >
+                                            <div>
+                                                <p className="capitalize">
+                                                    {entry.reason.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {new Date(
+                                                        entry.created_at,
+                                                    ).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p
+                                                    className={
+                                                        entry.amount < 0
+                                                            ? 'text-amber-700'
+                                                            : 'text-emerald-700'
+                                                    }
+                                                >
+                                                    {entry.amount > 0
+                                                        ? '+'
+                                                        : ''}
+                                                    {entry.amount}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Balance{' '}
+                                                    {entry.balance_after}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p
-                                                className={
-                                                    entry.amount < 0
-                                                        ? 'text-amber-700'
-                                                        : 'text-emerald-700'
-                                                }
-                                            >
-                                                {entry.amount > 0 ? '+' : ''}
-                                                {entry.amount}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                Balance {entry.balance_after}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
             </div>
 
             <DeleteUser />

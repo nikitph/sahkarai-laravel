@@ -2,7 +2,7 @@
 # PRD Section: §10.1 Provider; §10.2 Plans
 # Requirement ID: PAY-10.2
 # User Story: As the platform, I want exactly the v1 plans wired to Razorpay subscriptions, in INR, with the published prices.
-# Acceptance Criteria: Razorpay Subscriptions API; Free has no payment; Tier 1 is ₹499/month (one plan, no annual); Tier 2 is ₹1,499/month including 200 credits/month (one plan); INR only.
+# Acceptance Criteria: Razorpay Subscriptions API; Free has no payment; paid monthly plans are ₹999, ₹1,499, and ₹2,499; INR only.
 
 @payments
 Feature: Plan definitions and Razorpay wiring
@@ -13,13 +13,13 @@ Feature: Plan definitions and Razorpay wiring
       Given a signed-in individual user "fred@example.test" on tier "free"
       Then no Razorpay subscription record exists for fred
 
-  Rule: Tier 1 is ₹499/month, one plan, no annual variant
+  Rule: Tier 1 is ₹999/month, one plan, no annual variant
 
-    Scenario: A new Tier 1 subscription is created at ₹499/month
+    Scenario: A new Tier 1 subscription is created at ₹999/month
       Given a signed-in individual user "bea@example.test" on tier "free"
       When bea completes Razorpay checkout for plan "tier_1"
       Then a Razorpay subscription is created on the "tier_1_monthly_inr" plan
-      And the plan amount is ₹499 in INR
+      And the plan amount is ₹999 in INR
       And the plan interval is monthly
 
     @negative
@@ -39,6 +39,16 @@ Feature: Plan definitions and Razorpay wiring
       And the plan interval is monthly
       And cara is granted 200 credits for the new cycle via a grant_cycle ledger entry
 
+  Rule: Tier 3 is ₹2,499/month with personalized LLM chat configuration
+
+    Scenario: A new Tier 3 subscription is created at ₹2,499/month
+      Given a signed-in individual user "priya@example.test" on tier "free"
+      When priya completes Razorpay checkout for plan "tier_3"
+      Then a Razorpay subscription is created on the "tier_3_monthly_inr" plan
+      And the plan amount is ₹2,499 in INR
+      And the plan interval is monthly
+      And priya receives the personalized LLM chat configuration entitlement
+
   Rule: All payments are in INR only
 
     @negative
@@ -53,9 +63,8 @@ Feature: Plan definitions and Razorpay wiring
         | EUR      |
         | GBP      |
 
-  Rule: Final pricing is a v1 placeholder pending settlement (§14 item 1)
+  Rule: Pricing is controlled centrally
 
     Scenario: Pricing values are read from configuration, not hard-coded in the UI
       Given the platform configuration defines plan amounts
       Then the upgrade surface reads plan amounts from configuration
-      # See OQ-PAY-001: confirm/lock pricing before launch.

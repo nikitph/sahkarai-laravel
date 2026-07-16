@@ -109,7 +109,8 @@ export default function Dashboard({
                         {
                             label: t('credits'),
                             value:
-                                product?.tier === 'tier_2'
+                                product?.tier === 'tier_2' ||
+                                product?.tier === 'tier_3'
                                     ? stats.credits
                                     : '—',
                             icon: Bot,

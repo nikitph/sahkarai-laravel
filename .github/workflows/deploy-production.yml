@@ -1,0 +1,104 @@
+name: deploy production
+
+on:
+  workflow_run:
+    workflows: [verify]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERSION: ${{ github.event.workflow_run.head_sha }}
+      IMAGE: ghcr.io/nikitph/sahkarai-laravel
+      KAMAL_REGISTRY_PASSWORD: ${{ github.token }}
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      REVERB_APP_SECRET: ${{ secrets.REVERB_APP_SECRET }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+      RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+      RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+      RAZORPAY_TIER_1_PLAN_ID: ${{ secrets.RAZORPAY_TIER_1_PLAN_ID }}
+      RAZORPAY_TIER_2_PLAN_ID: ${{ secrets.RAZORPAY_TIER_2_PLAN_ID }}
+      RAZORPAY_TIER_3_PLAN_ID: ${{ secrets.RAZORPAY_TIER_3_PLAN_ID }}
+
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build and publish immutable application image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          provenance: false
+          push: true
+          tags: ${{ env.IMAGE }}:${{ env.VERSION }}
+          build-args: SERVICE=sahkarai-laravel
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install Kamal
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
+        with:
+          ruby-version: '3.3'
+      - run: gem install kamal --version 2.6.1 --no-document
+
+      - name: Install production SSH key
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_laravel_deploy
+          chmod 600 ~/.ssh/sahkarai_laravel_deploy
+          ssh-keyscan -H 168.144.26.122 >> ~/.ssh/known_hosts
+
+      - name: Map GitHub secrets into Kamal
+        run: |
+          mkdir -p .kamal
+          printf '%s\n' \
+            'KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD' \
+            'APP_KEY=$APP_KEY' \
+            'DB_PASSWORD=$DB_PASSWORD' \
+            'POSTGRES_PASSWORD=$POSTGRES_PASSWORD' \
+            'REVERB_APP_SECRET=$REVERB_APP_SECRET' \
+            'DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY' \
+            'RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID' \
+            'RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET' \
+            'RAZORPAY_WEBHOOK_SECRET=$RAZORPAY_WEBHOOK_SECRET' \
+            'RAZORPAY_TIER_1_PLAN_ID=$RAZORPAY_TIER_1_PLAN_ID' \
+            'RAZORPAY_TIER_2_PLAN_ID=$RAZORPAY_TIER_2_PLAN_ID' \
+            'RAZORPAY_TIER_3_PLAN_ID=$RAZORPAY_TIER_3_PLAN_ID' \
+            > .kamal/secrets
+
+      - name: Roll out verified revision
+        run: kamal deploy --version="$VERSION" --skip-push
+
+      - name: Verify public health endpoint
+        run: curl --fail --retry 8 --retry-delay 3 --retry-all-errors https://app.168.144.26.122.sslip.io/up

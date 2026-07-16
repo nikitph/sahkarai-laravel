@@ -5,7 +5,7 @@ export type User = {
     avatar?: string;
     email_verified_at: string | null;
     role: 'individual_member' | 'saas_admin';
-    tier: 'free' | 'tier_1' | 'tier_2';
+    tier: 'free' | 'tier_1' | 'tier_2' | 'tier_3';
     locale: 'en' | 'hi' | 'gu' | 'mr';
     credits_balance: number;
     /* @chisel-2fa */

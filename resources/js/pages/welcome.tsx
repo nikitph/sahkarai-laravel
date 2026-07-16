@@ -53,14 +53,13 @@ const plans = [
     },
     {
         name: 'Tier 1',
-        price: '₹499',
+        price: '₹999',
         description: 'Turn dense updates into clear next steps.',
         features: [
             'Everything in Free',
             'Four-language interpretations',
             'Exports and smart notifications',
         ],
-        featured: true,
     },
     {
         name: 'Tier 2',
@@ -70,6 +69,17 @@ const plans = [
             'Everything in Tier 1',
             'Document-grounded AI chat',
             '200 chat credits each month',
+        ],
+        featured: true,
+    },
+    {
+        name: 'Tier 3',
+        price: '₹2,499',
+        description: 'Make the AI workspace adapt to how you work.',
+        features: [
+            'Everything in Tier 2',
+            'Personalized LLM chat configuration',
+            'Custom response style and detail',
         ],
     },
 ];
@@ -485,7 +495,7 @@ export default function Welcome() {
                                 account.
                             </p>
                         </div>
-                        <div className="mt-20 grid gap-4 lg:grid-cols-3">
+                        <div className="mt-20 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                             {plans.map((plan, index) => (
                                 <article
                                     key={plan.name}

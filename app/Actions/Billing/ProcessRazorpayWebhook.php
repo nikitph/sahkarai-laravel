@@ -90,8 +90,8 @@ class ProcessRazorpayWebhook
                         $subscription->update(['tier' => $targetTier, 'pending_tier' => null]);
                         $previousTier = $user->tier;
                         $user->update(['tier' => $targetTier]);
-                        if ($targetTier === Tier::Tier2 && $eventType === 'subscription.charged') {
-                            $grant = $this->cycleCreditGrant($previousTier, $previousPeriodStart, $previousPeriodEnd);
+                        if ($targetTier->canChat() && $eventType === 'subscription.charged') {
+                            $grant = $this->cycleCreditGrant($targetTier, $previousTier, $previousPeriodStart, $previousPeriodEnd);
                             if ($user->credits_balance > 0) {
                                 $this->credits->handle($user, -$user->credits_balance, CreditReason::Adjustment, "razorpay-cycle-expiry:{$eventId}", $subscription, [
                                     'kind' => 'unused_cycle_expiry',
@@ -156,16 +156,16 @@ class ProcessRazorpayWebhook
             throw new RuntimeException('The credit top-up payload is invalid.');
         }
 
-        $user = User::query()->whereKey($userId)->where('tier', Tier::Tier2)->firstOrFail();
+        $user = User::query()->whereKey($userId)->whereIn('tier', [Tier::Tier2, Tier::Tier3])->firstOrFail();
         $this->credits->handle($user, $amount, CreditReason::TopUp, "razorpay-topup:{$eventId}", metadata: [
             'provider_payment_id' => Arr::get($payload, 'payload.payment.entity.id'),
         ]);
     }
 
-    private function cycleCreditGrant(Tier $previousTier, ?CarbonInterface $periodStart, ?CarbonInterface $periodEnd): int
+    private function cycleCreditGrant(Tier $targetTier, Tier $previousTier, ?CarbonInterface $periodStart, ?CarbonInterface $periodEnd): int
     {
-        $fullGrant = (int) config('sahkarai.tiers.tier_2.monthly_credits');
-        if ($previousTier !== Tier::Tier1 || ! $periodStart || ! $periodEnd) {
+        $fullGrant = (int) config("sahkarai.tiers.{$targetTier->value}.monthly_credits");
+        if ($previousTier->canChat() || $previousTier === Tier::Free || ! $periodStart || ! $periodEnd) {
             return $fullGrant;
         }
 

@@ -45,7 +45,7 @@ class BillingController extends Controller
             }
             $request->session()->put('razorpay_checkout', $this->checkoutPayload($request->user(), $subscription, $tier));
         } elseif ($subscription->provider_subscription_id) {
-            $isDowngrade = $subscription->tier === Tier::Tier2 && $tier === Tier::Tier1;
+            $isDowngrade = $tier->rank() < $subscription->tier->rank();
             $transition = [
                 'from' => $subscription->tier->value,
                 'to' => $tier->value,

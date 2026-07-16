@@ -18,7 +18,7 @@ class SendNotificationDigest implements ShouldQueue
     public function handle(): void
     {
         User::query()
-            ->whereIn('tier', ['tier_1', 'tier_2'])
+            ->whereIn('tier', ['tier_1', 'tier_2', 'tier_3'])
             ->with('notificationPreference')
             ->each(function (User $user): void {
                 if (! $user->notificationPreference) {

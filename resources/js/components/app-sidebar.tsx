@@ -31,7 +31,7 @@ export function AppSidebar() {
     const items: NavItem[] = [
         { title: t('dashboard'), href: '/dashboard', icon: LayoutGrid },
         { title: t('archive'), href: '/archive', icon: BookOpenText },
-        ...(product?.tier === 'tier_2'
+        ...(product?.tier === 'tier_2' || product?.tier === 'tier_3'
             ? [{ title: t('chat'), href: '/chats', icon: Bot }]
             : []),
         ...(product?.tier !== 'free'
@@ -71,7 +71,8 @@ export function AppSidebar() {
                             {product?.tier.replace('_', ' ')}
                         </p>
                     </div>
-                    {product?.tier === 'tier_2' && (
+                    {(product?.tier === 'tier_2' ||
+                        product?.tier === 'tier_3') && (
                         <Badge variant="secondary">{product.credits} cr</Badge>
                     )}
                 </div>

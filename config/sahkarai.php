@@ -17,8 +17,9 @@ return [
     ],
     'tiers' => [
         'free' => ['monthly_price' => 0, 'monthly_credits' => 0],
-        'tier_1' => ['monthly_price' => 49900, 'monthly_credits' => 0],
+        'tier_1' => ['monthly_price' => 99900, 'monthly_credits' => 0],
         'tier_2' => ['monthly_price' => 149900, 'monthly_credits' => 200],
+        'tier_3' => ['monthly_price' => 249900, 'monthly_credits' => 200],
     ],
     'credits' => [
         'topup_url' => env('CREDIT_TOPUP_URL'),
@@ -50,6 +51,7 @@ return [
         'plans' => [
             'tier_1' => env('RAZORPAY_TIER_1_PLAN_ID'),
             'tier_2' => env('RAZORPAY_TIER_2_PLAN_ID'),
+            'tier_3' => env('RAZORPAY_TIER_3_PLAN_ID'),
         ],
     ],
 ];

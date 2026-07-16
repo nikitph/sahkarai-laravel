@@ -114,7 +114,8 @@ PROMPT,
 
         $this->verifyPlan($client, 'tier_1');
         $this->verifyPlan($client, 'tier_2');
-        $this->components->info('Razorpay credentials and both INR monthly plans verified read-only.');
+        $this->verifyPlan($client, 'tier_3');
+        $this->components->info('Razorpay credentials and all three INR monthly plans verified read-only.');
     }
 
     private function verifyPlan(PendingRequest $client, string $tier): void

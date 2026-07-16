@@ -96,6 +96,7 @@ env:
     - RAZORPAY_WEBHOOK_SECRET
     - RAZORPAY_TIER_1_PLAN_ID
     - RAZORPAY_TIER_2_PLAN_ID
+    - RAZORPAY_TIER_3_PLAN_ID
 
 # Immutable regulatory originals must outlive image/container replacement. Web
 # serves downloads while workers acquire/extract, so every app role mounts the

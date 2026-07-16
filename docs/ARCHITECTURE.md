@@ -40,7 +40,7 @@ Regulatory documents, versions, interpretations, poll runs, and ingestion alerts
 
 ## Billing boundary
 
-Razorpay is authoritative for activation and renewal. Local checkout requests never grant access. Signed lifecycle webhooks activate tiers, reset monthly credits, apply prorated Tier 1→Tier 2 credits, and record failures. Downgrades are queued until the paid-period anniversary. A daily reconciliation job records drift and alerts ops.
+Razorpay is authoritative for activation and renewal. Local checkout requests never grant access. Signed lifecycle webhooks activate tiers, reset monthly chat credits, apply prorated upgrades into a chat-enabled tier, and record failures. Tier 3 inherits chat and adds a distinct personalized-chat entitlement; the personalization settings contract is intentionally left to its own product specification. Downgrades are queued until the paid-period anniversary. A daily reconciliation job records drift and alerts ops.
 
 ## Runtime topology
 

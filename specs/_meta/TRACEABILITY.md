@@ -51,7 +51,7 @@ its `# Trace:` block. Scenario IDs are inferred and stable (see `specs/README.md
 | §8.8 | Chat exports (json, md, pdf) | `chat/chat_exports.feature` | CHAT-8.8 |
 | §9.1 | Account settings | `account/account_settings.feature` | ACCT-9.1 |
 | §9.2 | Account deletion (30-day soft-delete) | `account/account_deletion.feature` | ACCT-9.2 |
-| §10.1, §10.2 | Plans (Free / Tier 1 / Tier 2) | `payments/payment_plans.feature` | PAY-10.2 |
+| §10.1, §10.2 | Plans (Free / Tier 1 / Tier 2 / Tier 3) | `payments/payment_plans.feature` | PAY-10.2 |
 | §10.3 | Upgrades (Free→T1/T2, T1→T2 prorated) | `payments/payment_upgrade.feature` | PAY-10.3 |
 | §10.4 | Downgrades queued to anniversary | `payments/payment_downgrade.feature` | PAY-10.4 |
 | §10.5 | Cancellation = downgrade to Free | `payments/payment_cancellation.feature` | PAY-10.5-CANCEL |

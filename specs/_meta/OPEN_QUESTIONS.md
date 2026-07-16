@@ -6,7 +6,7 @@ means the scenarios cannot run without a concrete value.
 
 | ID | PRD Area | Question | Blocking? |
 |----|----------|----------|-----------|
-| OQ-PAY-001 | §10.2, §14 item 1 | Final pricing for Tier 1 monthly (₹499?) and Tier 2 monthly (₹1,499?). Are these placeholders or final? Are there annual variants planned post-launch? | No (placeholders documented); blocks production payment config |
+| OQ-PAY-001 | §10.2, §14 item 1 | **Resolved 2026-07-16** — monthly pricing is Free ₹0, Tier 1 ₹999, Tier 2 ₹1,499, Tier 3 ₹2,499; INR only, with no annual variants in v1. | No |
 | OQ-PAY-002 | §10.3 | When Tier 1 → Tier 2 is prorated mid-cycle, how are credits prorated to remaining cycle days — ceil, floor, nearest integer, or a continuous balance? Example: 200 × 15/30 = 100; what if it's 200 × 13/30 = 86.67? | Yes — required to write a deterministic credits-granted assertion |
 | OQ-PAY-003 | §10.4 | Can a user rescind a queued downgrade before its effective date? (Currently assumed yes per ASSUMPTION-A008.) | No — but affects affordance design |
 | OQ-PAY-004 | §10.6 | Confirm which exact Razorpay webhook event identifiers will be handled: subscription.activated, subscription.charged, subscription.halted, subscription.cancelled, subscription.completed — plus one-off payment events for top-up. | Yes — required to bind webhook tests |

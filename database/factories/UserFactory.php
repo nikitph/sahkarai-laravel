@@ -60,6 +60,11 @@ class UserFactory extends Factory
         return $this->state(fn () => ['tier' => Tier::Tier2, 'credits_balance' => $credits]);
     }
 
+    public function tier3(int $credits = 200): static
+    {
+        return $this->state(fn () => ['tier' => Tier::Tier3, 'credits_balance' => $credits]);
+    }
+
     public function admin(): static
     {
         return $this->state(fn () => ['role' => UserRole::SaasAdmin]);

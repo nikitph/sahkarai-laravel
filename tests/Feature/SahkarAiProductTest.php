@@ -158,6 +158,20 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseCount('credit_ledger', 1);
     }
 
+    public function test_tier_three_inherits_chat_and_exposes_only_its_personalization_entitlement(): void
+    {
+        $user = User::factory()->tier3()->create();
+
+        $this->assertTrue($user->tier->canViewInterpretations());
+        $this->assertTrue($user->tier->canChat());
+        $this->assertTrue($user->tier->canPersonalizeChat());
+        $this->assertFalse(Tier::Tier2->canPersonalizeChat());
+
+        $this->actingAs($user)->get(route('dashboard'))->assertInertia(fn ($page) => $page
+            ->where('product.tier', 'tier_3')
+            ->where('product.personalized_chat', true));
+    }
+
     public function test_context_limit_closes_chat_without_debiting_or_persisting_message(): void
     {
         [$document, $version] = $this->documentWithInterpretation();
@@ -419,6 +433,7 @@ class SahkarAiProductTest extends TestCase
             'sahkarai.razorpay.webhook_secret' => 'webhook_test_secret',
             'sahkarai.razorpay.plans.tier_1' => 'plan_tier_1',
             'sahkarai.razorpay.plans.tier_2' => 'plan_tier_2',
+            'sahkarai.razorpay.plans.tier_3' => 'plan_tier_3',
         ]);
         RegulatoryInterpretationAgent::fake([[
             'locale' => 'en',
@@ -434,16 +449,20 @@ class SahkarAiProductTest extends TestCase
         Http::fake([
             '*/plans/plan_tier_1' => Http::response([
                 'id' => 'plan_tier_1', 'period' => 'monthly', 'interval' => 1,
-                'item' => ['currency' => 'INR', 'amount' => 49900],
+                'item' => ['currency' => 'INR', 'amount' => 99900],
             ]),
             '*/plans/plan_tier_2' => Http::response([
                 'id' => 'plan_tier_2', 'period' => 'monthly', 'interval' => 1,
                 'item' => ['currency' => 'INR', 'amount' => 149900],
             ]),
+            '*/plans/plan_tier_3' => Http::response([
+                'id' => 'plan_tier_3', 'period' => 'monthly', 'interval' => 1,
+                'item' => ['currency' => 'INR', 'amount' => 249900],
+            ]),
         ]);
 
         $this->artisan('sahkarai:providers:verify')->assertSuccessful();
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_new_paid_subscription_launches_checkout_without_granting_access(): void

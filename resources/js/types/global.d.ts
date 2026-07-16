@@ -21,10 +21,11 @@ declare module '@inertiajs/core' {
                 permissions: string[];
             } | null;
             product: {
-                tier: 'free' | 'tier_1' | 'tier_2';
+                tier: 'free' | 'tier_1' | 'tier_2' | 'tier_3';
                 role: 'individual_member' | 'saas_admin';
                 locale: 'en' | 'hi' | 'gu' | 'mr';
                 credits: number;
+                personalized_chat: boolean;
                 unread_notifications: number;
             } | null;
             realtime: {

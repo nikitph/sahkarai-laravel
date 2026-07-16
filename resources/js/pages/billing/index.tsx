@@ -5,6 +5,7 @@ import {
     Crown,
     FileText,
     ShieldCheck,
+    SlidersHorizontal,
     Sparkles,
 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -155,6 +156,18 @@ export default function Billing({
                 'JSON, Markdown & PDF chat exports',
             ],
         },
+        {
+            id: 'tier_3',
+            name: 'Personalized',
+            icon: SlidersHorizontal,
+            description: 'Shape the AI workspace around how you work.',
+            features: [
+                'Everything in Intelligence',
+                'Personalized LLM chat configuration',
+                'Custom response style and detail',
+                `${plans.tier_3.monthly_credits} chat credits each cycle`,
+            ],
+        },
     ];
 
     return (
@@ -206,7 +219,7 @@ export default function Billing({
                         granted only after Razorpay confirms payment.
                     </div>
                 )}
-                <div className="grid gap-5 lg:grid-cols-3">
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                     {tiers.map((tier) => {
                         const current = subscription.tier === tier.id;
                         const price = plans[tier.id].monthly_price / 100;
@@ -214,16 +227,16 @@ export default function Billing({
                         return (
                             <Card
                                 key={tier.id}
-                                className={`relative rounded-3xl ${tier.id === 'tier_2' ? 'border-indigo-400 shadow-xl shadow-indigo-500/10' : 'border-border/60'}`}
+                                className={`relative rounded-3xl ${tier.id === 'tier_2' ? 'border-teal-400 shadow-xl shadow-teal-500/10' : 'border-border/60'}`}
                             >
                                 {tier.id === 'tier_2' && (
                                     <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                        Most capable
+                                        Most popular
                                     </Badge>
                                 )}
                                 <CardHeader>
                                     <span
-                                        className={`mb-3 grid size-11 place-items-center rounded-xl ${tier.id === 'tier_2' ? 'bg-indigo-600 text-white' : 'bg-muted'}`}
+                                        className={`mb-3 grid size-11 place-items-center rounded-xl ${tier.id === 'tier_2' ? 'bg-teal-600 text-white' : 'bg-muted'}`}
                                     >
                                         <tier.icon className="size-5" />
                                     </span>

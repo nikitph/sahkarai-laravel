@@ -40,7 +40,7 @@ class ApplyPendingSubscriptionChanges implements ShouldQueue
                     if (! $user) {
                         return;
                     }
-                    $user->update(['tier' => $target, 'credits_balance' => $target === Tier::Tier2 ? $user->credits_balance : 0]);
+                    $user->update(['tier' => $target, 'credits_balance' => $target->canChat() ? $user->credits_balance : 0]);
                     $subscription->update([
                         'tier' => $target,
                         'status' => $target === Tier::Free ? SubscriptionStatus::Cancelled : SubscriptionStatus::Active,

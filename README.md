@@ -23,7 +23,7 @@ The seed also provides sample regulatory documents and interpretations in Englis
 
 ## Product capabilities
 
-- Free, Tier 1, and Tier 2 capability boundaries with user-owned subscriptions and credit ledgers
+- Free, Insight, Intelligence, and Personalized capability boundaries with user-owned subscriptions and credit ledgers
 - RBI / Income Tax / GST polling, immutable original storage, SHA-256 deduplication, revisions, PDF extraction, and a 12-month backfill command
 - Laravel AI SDK agents for structured four-locale interpretations and document-version-scoped streaming chat
 - searchable latest-version archive with filters, provenance, raw downloads, issue reporting, and Markdown/PDF exports
@@ -44,6 +44,7 @@ RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
 RAZORPAY_TIER_1_PLAN_ID=
 RAZORPAY_TIER_2_PLAN_ID=
+RAZORPAY_TIER_3_PLAN_ID=
 ```
 
 Set `RBI_FEED_URL`, `INCOME_TAX_FEED_URL`, and `GST_FEED_URL` to the chosen RSS/Atom sources before enabling scheduled ingestion. Missing sources fail visibly in `poll_runs` and the ops dashboard.

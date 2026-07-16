@@ -18,7 +18,7 @@ class NotifyRegulatoryUpdate
         }
 
         User::query()
-            ->whereIn('tier', ['tier_1', 'tier_2'])
+            ->whereIn('tier', ['tier_1', 'tier_2', 'tier_3'])
             ->with(['subscription', 'notificationPreference'])
             ->each(function (User $user) use ($document, $version): void {
                 $preferences = $user->notificationPreference;
