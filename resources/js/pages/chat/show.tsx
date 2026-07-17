@@ -184,7 +184,7 @@ export default function ChatShow({
     return (
         <>
             <Head title={chat.title} />
-            <div className="mx-auto flex h-[calc(100dvh-4rem)] min-h-0 w-full max-w-6xl flex-col overflow-hidden p-4 md:p-8">
+            <div className="mx-auto flex h-[calc(100dvh-5rem)] min-h-0 w-full max-w-6xl flex-col overflow-hidden p-4 md:p-8">
                 <Link
                     href="/chats"
                     className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
