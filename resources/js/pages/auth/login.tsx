@@ -26,13 +26,6 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title={t('login')} />
 
-            <div className="mb-6 text-center">
-                <h1 className="text-xl font-semibold">{t('loginTitle')}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {t('loginDescription')}
-                </p>
-            </div>
-
             {locale === 'en' && <PasskeyVerify />}
 
             <Form
