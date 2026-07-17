@@ -131,6 +131,25 @@ class SahkarAiProductTest extends TestCase
         $this->assertDatabaseCount('chat_messages', 2);
     }
 
+    public function test_chat_index_loads_the_latest_message_without_ambiguous_columns(): void
+    {
+        [$document, $version] = $this->documentWithInterpretation();
+        $user = User::factory()->tier2()->create();
+        $chat = Chat::create([
+            'user_id' => $user->id,
+            'regulatory_document_id' => $document->id,
+            'document_version_id' => $version->id,
+        ]);
+        $chat->messages()->create(['role' => 'user', 'content' => 'First message.']);
+        $latest = $chat->messages()->create(['role' => 'assistant', 'content' => 'Latest answer.']);
+
+        $this->actingAs($user)->get(route('chats.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('chats.data.0.latest_message.id', $latest->id)
+                ->where('chats.data.0.latest_message.content', 'Latest answer.'));
+    }
+
     public function test_an_interrupted_ai_stream_can_resume_without_a_second_message_debit(): void
     {
         [$document, $version] = $this->documentWithInterpretation();

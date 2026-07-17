@@ -17,7 +17,7 @@ class ChatController extends Controller
         $this->authorize('viewAny', Chat::class);
 
         return Inertia::render('chat/index', [
-            'chats' => $request->user()->chats()->with(['document:id,title,source', 'latestMessage:id,chat_id,content'])->latest('updated_at')->paginate(20),
+            'chats' => $request->user()->chats()->with(['document:id,title,source', 'latestMessage'])->latest('updated_at')->paginate(20),
             'credits' => $request->user()->credits_balance,
         ]);
     }
