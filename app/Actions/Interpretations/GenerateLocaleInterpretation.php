@@ -12,6 +12,8 @@ use RuntimeException;
 
 class GenerateLocaleInterpretation
 {
+    public function __construct(private readonly NormalizeInterpretationDates $normalizeDates) {}
+
     /** @return array<string, mixed> */
     public function handle(DocumentVersion $version, SupportedLocale $locale): array
     {
@@ -25,7 +27,7 @@ class GenerateLocaleInterpretation
         if (! $response instanceof StructuredAgentResponse) {
             throw new RuntimeException('The AI provider did not return structured output.');
         }
-        $payload = $response->structured;
+        $payload = $this->normalizeDates->handle($response->structured);
 
         $validated = Validator::make($payload, [
             'locale' => ['required', 'in:'.$locale->value],
