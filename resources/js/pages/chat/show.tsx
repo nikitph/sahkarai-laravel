@@ -58,12 +58,13 @@ export default function ChatShow({
     const active = chat.status === 'active' && credits > 0;
     // Inertia may reuse this page component when navigating between conversations.
     // Synchronizing here ensures a newly selected chat never displays the prior chat's messages.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    useEffect(() => setMessages(chat.messages), [chat.id, chat.messages]);
-    useEffect(
-        () => bottom.current?.scrollIntoView({ behavior: 'smooth' }),
-        [messages],
-    );
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMessages(chat.messages);
+    }, [chat.id, chat.messages]);
+    useEffect(() => {
+        bottom.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
     const send = async (e: FormEvent) => {
         e.preventDefault();
         const content = draft.trim();
