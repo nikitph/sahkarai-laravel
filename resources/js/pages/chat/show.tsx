@@ -184,15 +184,15 @@ export default function ChatShow({
     return (
         <>
             <Head title={chat.title} />
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 md:p-8">
+            <div className="mx-auto flex h-[calc(100dvh-4rem)] min-h-0 w-full max-w-6xl flex-col overflow-hidden p-4 md:p-8">
                 <Link
                     href="/chats"
                     className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
                 >
                     <ArrowLeft className="mr-1 size-4" /> All chats
                 </Link>
-                <Card className="flex min-h-[75vh] flex-1 flex-col overflow-hidden rounded-3xl border-border/60 shadow-lg">
-                    <header className="flex flex-wrap items-center justify-between gap-4 border-b bg-muted/30 p-5">
+                <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border-border/60 shadow-lg">
+                    <header className="sticky top-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-4 border-b bg-background/95 p-5 backdrop-blur supports-[backdrop-filter]:bg-background/85">
                         <div className="flex min-w-0 items-center gap-3">
                             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white">
                                 <Bot className="size-5" />
@@ -246,7 +246,7 @@ export default function ChatShow({
                             )}
                         </div>
                     </header>
-                    <div className="flex-1 space-y-5 overflow-y-auto p-5 md:p-7">
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5 md:p-7">
                         {messages.length === 0 && (
                             <div className="mx-auto mt-16 max-w-md text-center">
                                 <Sparkles className="mx-auto mb-4 size-9 text-indigo-500" />
@@ -293,7 +293,7 @@ export default function ChatShow({
                         ))}
                         <div ref={bottom} />
                     </div>
-                    <footer className="border-t bg-background p-4">
+                    <footer className="sticky bottom-0 z-10 shrink-0 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85">
                         {chat.status !== 'active' ? (
                             <div className="rounded-xl bg-muted p-4 text-center text-sm">
                                 <p className="font-medium">
