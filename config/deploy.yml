@@ -74,6 +74,9 @@ env:
     REDIS_PORT: "6379"
     REDIS_QUEUE_RETRY_AFTER: "240"
 
+    REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://app.168.144.26.122.sslip.io)"
+    INCOME_TAX_FEED_URL: https://wmstatic-prd.incometaxindia.gov.in/circular-rss-feed/-/asset_publisher/bxhj/rss
+
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
     REVERB_APP_KEY: conformancekey

@@ -37,9 +37,13 @@ return [
         'storage_disk' => env('REGULATORY_STORAGE_DISK', 'local'),
         'backfill_months' => (int) env('REGULATORY_BACKFILL_MONTHS', 12),
         'max_document_bytes' => (int) env('REGULATORY_MAX_DOCUMENT_BYTES', 52428800),
+        'user_agent' => env('REGULATORY_USER_AGENT', 'SahkarAI/1.0 (+https://app.168.144.26.122.sslip.io)'),
         'sources' => [
             'rbi' => ['feed_url' => env('RBI_FEED_URL')],
-            'income_tax' => ['feed_url' => env('INCOME_TAX_FEED_URL')],
+            'income_tax' => ['feed_url' => env(
+                'INCOME_TAX_FEED_URL',
+                'https://wmstatic-prd.incometaxindia.gov.in/circular-rss-feed/-/asset_publisher/bxhj/rss',
+            )],
             'gst' => ['feed_url' => env('GST_FEED_URL')],
         ],
     ],
