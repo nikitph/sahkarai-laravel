@@ -47,7 +47,10 @@ RAZORPAY_TIER_2_PLAN_ID=
 RAZORPAY_TIER_3_PLAN_ID=
 ```
 
-Set `RBI_FEED_URL`, `INCOME_TAX_FEED_URL`, and `GST_FEED_URL` to the chosen RSS/Atom sources before enabling scheduled ingestion. Missing sources fail visibly in `poll_runs` and the ops dashboard.
+Income Tax ingestion defaults to the department's official Circular RSS feed.
+Set `RBI_FEED_URL` and `GST_FEED_URL` before enabling those sources, or override
+`INCOME_TAX_FEED_URL` if the department supplies an allow-listed endpoint.
+Missing or unreachable sources fail visibly in `poll_runs` and the ops dashboard.
 
 ## Common commands
 

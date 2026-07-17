@@ -27,7 +27,17 @@ class ConfiguredFeedAdapter implements SourceAdapter
             throw new RuntimeException("No feed URL is configured for {$this->source()->value}.");
         }
 
-        $body = Http::timeout(30)->retry(2, 500)->get($url)->throw()->body();
+        $body = Http::accept('application/rss+xml, application/atom+xml, application/xml, text/xml')
+            ->withUserAgent((string) config('sahkarai.ingestion.user_agent'))
+            ->when(
+                $this->source() === RegulatorySource::IncomeTax,
+                fn ($request) => $request->withHeaders(['Referer' => 'https://www.incometaxindia.gov.in/tax-feeds']),
+            )
+            ->timeout(30)
+            ->retry(2, 500)
+            ->get($url)
+            ->throw()
+            ->body();
         $xml = simplexml_load_string($body, SimpleXMLElement::class, LIBXML_NOCDATA | LIBXML_NONET);
         if ($xml === false) {
             throw new RuntimeException("Invalid XML feed returned by {$this->source()->value}.");

@@ -976,6 +976,28 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame('2026-05-15', $candidate->publishedAt?->toDateString());
         $this->assertSame(DocumentType::Other, $candidate->documentType);
         $this->assertNotSame('', $candidate->downloadUrl);
+        Http::assertSent(fn ($request) => $request->hasHeader('Accept', 'application/rss+xml, application/atom+xml, application/xml, text/xml')
+            && $request->hasHeader('User-Agent', (string) config('sahkarai.ingestion.user_agent')));
+    }
+
+    public function test_income_tax_feed_uses_the_official_subscription_referer(): void
+    {
+        config(['sahkarai.ingestion.sources.income_tax.feed_url' => 'https://income-tax.example.test/feed.xml']);
+        Http::fake(['https://income-tax.example.test/feed.xml' => Http::response(<<<'XML'
+            <?xml version="1.0"?>
+            <rss><channel><item>
+              <guid>CBDT-6-2026</guid>
+              <title>Circular No. 6/2026</title>
+              <link>https://income-tax.example.test/circular-6-2026.pdf</link>
+              <pubDate>Thu, 02 Jul 2026 09:00:00 GMT</pubDate>
+            </item></channel></rss>
+            XML)]);
+
+        $candidates = iterator_to_array((new ConfiguredFeedAdapter(RegulatorySource::IncomeTax))->discover());
+
+        $this->assertCount(1, $candidates);
+        $this->assertSame('CBDT-6-2026', $candidates[0]->sourceDocumentId);
+        Http::assertSent(fn ($request) => $request->hasHeader('Referer', 'https://www.incometaxindia.gov.in/tax-feeds'));
     }
 
     public function test_issue_report_records_exact_version_and_locale_with_optional_category(): void
