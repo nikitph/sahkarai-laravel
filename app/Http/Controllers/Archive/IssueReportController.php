@@ -15,6 +15,8 @@ class IssueReportController extends Controller
     public function store(Request $request, Interpretation $interpretation): RedirectResponse
     {
         $this->authorize('create', IssueReport::class);
+        $interpretation->load('version.document');
+        $this->authorize('view', $interpretation->version->document);
         abort_unless(in_array($interpretation->status, ['published', 'partial'], true), 404);
         $validated = $request->validate([
             'category' => ['nullable', 'in:inaccurate,mistranslation,missing_takeaway,wrong_applicability,other'],

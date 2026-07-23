@@ -27,6 +27,7 @@ The seed also provides sample regulatory documents and interpretations in Englis
 - RBI / Income Tax / GST polling, immutable original storage, SHA-256 deduplication, revisions, PDF extraction, and a 12-month backfill command
 - Laravel AI SDK agents for structured four-locale interpretations and document-version-scoped streaming chat
 - searchable latest-version archive with filters, provenance, raw downloads, issue reporting, and Markdown/PDF exports
+- private PDF uploads for Tier 2, Tier 3, and admins, with 5 MB content validation, queued extraction/interpretation, live processing status, and owner-controlled deletion
 - real-time in-app notifications, source-specific email cadence, localized mail, and immutable delivery logs
 - Razorpay checkout seams, signed/idempotent webhooks, queued downgrades, failed-renewal handling, reconciliation, and dormant top-up support
 - private immutable chats, atomic one-credit message debits, context-window closure, and JSON/Markdown/PDF exports

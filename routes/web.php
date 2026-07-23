@@ -3,6 +3,7 @@
 use App\Events\ConformancePing;
 use App\Http\Controllers\Archive\ArchiveController;
 use App\Http\Controllers\Archive\IssueReportController;
+use App\Http\Controllers\Archive\UploadedDocumentController;
 use App\Http\Controllers\Billing\BillingController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Chat\ChatMessageController;
@@ -70,6 +71,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('archive', [ArchiveController::class, 'index'])->name('archive.index');
     Route::get('archive/{document}', [ArchiveController::class, 'show'])->name('archive.show');
     Route::get('archive/{document}/download', [ArchiveController::class, 'download'])->name('archive.download');
+    Route::post('archive/uploads', [UploadedDocumentController::class, 'store'])->name('archive.uploads.store');
+    Route::delete('archive/uploads/{document}', [UploadedDocumentController::class, 'destroy'])->name('archive.uploads.destroy');
     Route::post('interpretations/{interpretation}/issues', [IssueReportController::class, 'store'])->name('interpretations.issues.store');
     Route::get('chats', [ChatController::class, 'index'])->name('chats.index');
     Route::post('documents/{document}/chats', [ChatController::class, 'store'])->name('chats.store');

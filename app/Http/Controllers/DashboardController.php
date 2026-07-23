@@ -19,12 +19,13 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'stats' => [
-                'documents' => RegulatoryDocument::query()->count(),
-                'newThisWeek' => RegulatoryDocument::query()->where('created_at', '>=', now()->subWeek())->count(),
+                'documents' => RegulatoryDocument::query()->visibleTo($user)->count(),
+                'newThisWeek' => RegulatoryDocument::query()->visibleTo($user)->where('created_at', '>=', now()->subWeek())->count(),
                 'unreadNotifications' => $user->productNotifications()->whereNull('read_at')->count(),
                 'credits' => $user->credits_balance,
             ],
             'recentDocuments' => RegulatoryDocument::query()
+                ->visibleTo($user)
                 ->with('latestVersion')
                 ->latest('published_at')
                 ->limit(6)

@@ -25,6 +25,7 @@ class ChatController extends Controller
     public function store(Request $request, RegulatoryDocument $document): RedirectResponse
     {
         $this->authorize('create', Chat::class);
+        $this->authorize('view', $document);
         $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
         $version = isset($validated['version'])
             ? $document->versions()->whereKey($validated['version'])->whereNotNull('extracted_text')->firstOrFail()

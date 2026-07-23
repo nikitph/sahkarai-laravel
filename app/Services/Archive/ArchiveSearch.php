@@ -3,6 +3,7 @@
 namespace App\Services\Archive;
 
 use App\Models\RegulatoryDocument;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -12,9 +13,10 @@ class ArchiveSearch
      * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<int, RegulatoryDocument>
      */
-    public function search(array $filters): LengthAwarePaginator
+    public function search(array $filters, User $user): LengthAwarePaginator
     {
         $query = RegulatoryDocument::query()
+            ->visibleTo($user)
             ->with(['latestVersion.interpretation'])
             ->when($filters['source'] ?? null, fn (Builder $query, string $source) => $query->where('source', $source))
             ->when($filters['document_type'] ?? null, fn (Builder $query, string $type) => $query->where('document_type', $type))

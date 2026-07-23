@@ -2,9 +2,13 @@
 
 ## Product flow
 
-The regulatory pipeline is:
+The platform regulatory pipeline is:
 
 `scheduled poll → source adapter → acquire immutable original → extract text → AI interpretation → publish → notify eligible users`
+
+The private upload pipeline reuses the same downstream jobs:
+
+`Tier 2 / Tier 3 / admin upload → Laravel content-based PDF validation → PDF parser preflight → store private immutable original → extract text → AI interpretation → publish to owner`
 
 The user path is:
 
@@ -18,11 +22,12 @@ Product data is user-owned. Chats, messages, subscriptions, credit ledger rows, 
 
 The initializer's organization infrastructure remains installed but dormant for v1. No product route creates organizations or memberships. This implementation uses Laravel session authentication and application-enforced ownership rather than the specs' Supabase-token vocabulary. Optional passkeys and 2FA are retained as a baseline strengthening.
 
-Regulatory documents, versions, interpretations, poll runs, and ingestion alerts are platform-owned. Browser users have no write routes for them. Only queued ingestion and interpretation code writes this corpus.
+Polled regulatory documents, their versions, poll runs, and ingestion alerts are platform-owned. Tier 2, Tier 3, and SaaS admin users may also create private, user-owned documents from readable PDFs up to 5 MB. Private documents, extracted text, interpretations, downloads, exports, and document-grounded chats are visible only to the uploader. Owner deletion cascades database records and removes stored original/extracted artifacts; permanent account purge does the same. Private publications never enter regulatory notification fan-out.
 
 ## Data invariants
 
 - `(source, source_document_id)` identifies a regulatory document.
+- `uploaded_by_user_id = null` identifies the public platform corpus; a non-null owner makes the entire document aggregate private.
 - Original bytes are stored once at a canonical path and identified by SHA-256.
 - Each changed byte sequence creates a new immutable `document_version`; revisions link with `supersedes_id`.
 - A document version has at most one interpretation row. Locale prose is generated independently with bounded retries; applicability, effective date, document type, and deadlines are stored once as locale-independent metadata.

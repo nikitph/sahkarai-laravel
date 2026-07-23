@@ -38,8 +38,10 @@ class SendNotificationDigest implements ShouldQueue
                         'rbi' => 'source_rbi',
                         'income_tax' => 'source_income_tax',
                         'gst' => 'source_gst',
+                        'user_upload' => null,
                     };
-                    if (! $user->notificationPreference->{$sourceField}
+                    if ($sourceField === null
+                        || ! $user->notificationPreference->{$sourceField}
                         || $user->notificationPreference->{$sourceField.'_cadence'}->value !== $this->cadence) {
                         continue;
                     }

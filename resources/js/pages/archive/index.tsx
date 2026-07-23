@@ -3,14 +3,17 @@ import {
     ArrowRight,
     Calendar,
     FileText,
+    LockKeyhole,
     Search,
     SlidersHorizontal,
+    Upload,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useT } from '@/lib/i18n';
 
 type Document = {
@@ -24,6 +27,9 @@ type Document = {
     effective_at: string | null;
     version: number | null;
     status: string | null;
+    extraction_status: string | null;
+    interpretation_status: string | null;
+    is_user_upload: boolean;
     snippet: string;
 };
 type Page = {
@@ -39,6 +45,7 @@ export default function ArchiveIndex({
     documents,
     filters,
     filterOptions,
+    capabilities,
 }: {
     documents: Page;
     filters: Record<string, string>;
@@ -47,8 +54,10 @@ export default function ArchiveIndex({
         types: Option[];
         applicability: Option[];
     };
+    capabilities: { uploads: boolean; maxUploadBytes: number };
 }) {
     const t = useT();
+    const maxUploadMegabytes = capabilities.maxUploadBytes / 1024 / 1024;
     const form = useForm({
         q: filters.q ?? '',
         source: filters.source ?? '',
@@ -61,6 +70,16 @@ export default function ArchiveIndex({
     const submit = (event: FormEvent) => {
         event.preventDefault();
         form.get('/archive', { preserveState: true, replace: true });
+    };
+    const upload = useForm<{
+        title: string;
+        published_at: string;
+        description: string;
+        document: File | null;
+    }>({ title: '', published_at: '', description: '', document: null });
+    const submitUpload = (event: FormEvent) => {
+        event.preventDefault();
+        upload.post('/archive/uploads', { forceFormData: true });
     };
 
     return (
@@ -80,6 +99,164 @@ export default function ArchiveIndex({
                         publications. Originals remain the source of truth.
                     </p>
                 </div>
+                {capabilities.uploads && (
+                    <Card className="mb-6 rounded-2xl border-indigo-300/60 bg-indigo-50/40 dark:bg-indigo-950/10">
+                        <CardContent className="p-5">
+                            <details>
+                                <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+                                    <div>
+                                        <p className="flex items-center gap-2 font-semibold">
+                                            <Upload className="size-4 text-indigo-600" />
+                                            Upload a private PDF
+                                        </p>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Extract and interpret your own
+                                            document using the archive pipeline.
+                                        </p>
+                                    </div>
+                                    <Badge variant="outline">
+                                        <LockKeyhole className="mr-1 size-3" />{' '}
+                                        Private
+                                    </Badge>
+                                </summary>
+                                <form
+                                    onSubmit={submitUpload}
+                                    className="mt-5 grid gap-4 border-t pt-5 md:grid-cols-2"
+                                >
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <label
+                                            htmlFor="upload-title"
+                                            className="text-sm font-medium"
+                                        >
+                                            Title
+                                        </label>
+                                        <Input
+                                            id="upload-title"
+                                            value={upload.data.title}
+                                            onChange={(event) =>
+                                                upload.setData(
+                                                    'title',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={255}
+                                            required
+                                        />
+                                        {upload.errors.title && (
+                                            <p className="text-sm text-destructive">
+                                                {upload.errors.title}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label
+                                            htmlFor="upload-pdf"
+                                            className="text-sm font-medium"
+                                        >
+                                            PDF (maximum {maxUploadMegabytes}{' '}
+                                            MB)
+                                        </label>
+                                        <Input
+                                            id="upload-pdf"
+                                            type="file"
+                                            accept="application/pdf,.pdf"
+                                            onChange={(event) =>
+                                                upload.setData(
+                                                    'document',
+                                                    event.target.files?.[0] ??
+                                                        null,
+                                                )
+                                            }
+                                            required
+                                        />
+                                        {upload.errors.document && (
+                                            <p className="text-sm text-destructive">
+                                                {upload.errors.document}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label
+                                            htmlFor="upload-date"
+                                            className="text-sm font-medium"
+                                        >
+                                            Publication date (optional)
+                                        </label>
+                                        <Input
+                                            id="upload-date"
+                                            type="date"
+                                            value={upload.data.published_at}
+                                            onChange={(event) =>
+                                                upload.setData(
+                                                    'published_at',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                        {upload.errors.published_at && (
+                                            <p className="text-sm text-destructive">
+                                                {upload.errors.published_at}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5 md:col-span-2">
+                                        <label
+                                            htmlFor="upload-description"
+                                            className="text-sm font-medium"
+                                        >
+                                            Description (optional)
+                                        </label>
+                                        <Textarea
+                                            id="upload-description"
+                                            value={upload.data.description}
+                                            onChange={(event) =>
+                                                upload.setData(
+                                                    'description',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={2000}
+                                        />
+                                        {upload.errors.description && (
+                                            <p className="text-sm text-destructive">
+                                                {upload.errors.description}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {upload.progress && (
+                                        <div className="md:col-span-2">
+                                            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                                                <span>Uploading</span>
+                                                <span>
+                                                    {upload.progress.percentage}
+                                                    %
+                                                </span>
+                                            </div>
+                                            <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                                <div
+                                                    className="h-full bg-indigo-600 transition-all"
+                                                    style={{
+                                                        width: `${upload.progress.percentage}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <Button
+                                        type="submit"
+                                        disabled={upload.processing}
+                                        className="md:col-span-2"
+                                    >
+                                        <Upload className="mr-1 size-4" />
+                                        {upload.processing
+                                            ? 'Uploading…'
+                                            : 'Upload and interpret'}
+                                    </Button>
+                                </form>
+                            </details>
+                        </CardContent>
+                    </Card>
+                )}
                 <Card className="mb-6 rounded-2xl border-border/60">
                     <CardContent className="p-4">
                         <form
@@ -192,11 +369,19 @@ export default function ArchiveIndex({
                                                 className="uppercase"
                                                 variant="secondary"
                                             >
-                                                {document.source.replace(
-                                                    '_',
-                                                    ' ',
-                                                )}
+                                                {document.is_user_upload
+                                                    ? 'User upload'
+                                                    : document.source.replace(
+                                                          '_',
+                                                          ' ',
+                                                      )}
                                             </Badge>
+                                            {document.is_user_upload && (
+                                                <Badge variant="outline">
+                                                    <LockKeyhole className="mr-1 size-3" />{' '}
+                                                    Private
+                                                </Badge>
+                                            )}
                                             {(
                                                 document.applicability_tags ?? [
                                                     document.applicability,
@@ -237,7 +422,11 @@ export default function ArchiveIndex({
                                                 : 'No date'}
                                         </span>
                                         <span className="flex items-center font-medium text-indigo-600">
-                                            {t('view')}{' '}
+                                            {document.status === 'published'
+                                                ? t('view')
+                                                : humanStatus(
+                                                      document.status,
+                                                  )}{' '}
                                             <ArrowRight className="ml-1 size-3.5" />
                                         </span>
                                     </div>
@@ -287,6 +476,10 @@ export default function ArchiveIndex({
             </div>
         </>
     );
+}
+
+function humanStatus(status: string | null) {
+    return (status ?? 'queued').replaceAll('_', ' ');
 }
 
 ArchiveIndex.layout = { breadcrumbs: [{ title: 'Archive', href: '/archive' }] };

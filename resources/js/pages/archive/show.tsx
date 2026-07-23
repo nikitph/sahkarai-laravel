@@ -9,7 +9,11 @@ import {
     FileDown,
     Flag,
     Languages,
+    LoaderCircle,
+    LockKeyhole,
+    Trash2,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,6 +34,9 @@ type Version = {
     id: number;
     version: number;
     status: string;
+    extraction_status: string;
+    interpretation_status: string;
+    extraction_error: string | null;
     original_filename: string;
     mime_type: string;
     size_bytes: number;
@@ -54,6 +61,8 @@ type Document = {
     published_at: string | null;
     effective_at: string | null;
     source_url: string | null;
+    upload_description: string | null;
+    is_user_upload: boolean;
     latest_version: Version | null;
     versions: {
         id: number;
@@ -68,10 +77,32 @@ export default function ArchiveShow({
     capabilities,
 }: {
     document: Document;
-    capabilities: { interpretations: boolean; exports: boolean; chat: boolean };
+    capabilities: {
+        interpretations: boolean;
+        exports: boolean;
+        chat: boolean;
+        delete: boolean;
+    };
 }) {
     const t = useT();
     const v = document.latest_version;
+    const processing =
+        !!v &&
+        !['published', 'extraction_failed', 'interpretation_failed'].includes(
+            v.status,
+        );
+    useEffect(() => {
+        if (!processing) {
+            return;
+        }
+
+        const timer = window.setInterval(
+            () => router.reload({ only: ['document'] }),
+            5000,
+        );
+
+        return () => window.clearInterval(timer);
+    }, [processing]);
     const report = useForm({
         category: '',
         locale: v?.requested_locale ?? 'en',
@@ -102,8 +133,16 @@ export default function ArchiveShow({
                         <section className="rounded-3xl border bg-gradient-to-br from-indigo-950 to-slate-950 p-7 text-white shadow-xl">
                             <div className="flex flex-wrap gap-2">
                                 <Badge className="bg-white/10 text-white uppercase hover:bg-white/10">
-                                    {document.source.replace('_', ' ')}
+                                    {document.is_user_upload
+                                        ? 'User upload'
+                                        : document.source.replace('_', ' ')}
                                 </Badge>
+                                {document.is_user_upload && (
+                                    <Badge className="bg-white/10 text-white hover:bg-white/10">
+                                        <LockKeyhole className="mr-1 size-3" />{' '}
+                                        Private
+                                    </Badge>
+                                )}
                                 <Badge className="bg-white/10 text-white capitalize hover:bg-white/10">
                                     {document.document_type.replaceAll(
                                         '_',
@@ -136,7 +175,43 @@ export default function ArchiveShow({
                                     </span>
                                 )}
                             </div>
+                            {document.upload_description && (
+                                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300">
+                                    {document.upload_description}
+                                </p>
+                            )}
                         </section>
+                        {processing && (
+                            <Card className="rounded-2xl border-indigo-300/60 bg-indigo-50/40 dark:bg-indigo-950/10">
+                                <CardContent className="flex items-center gap-4 p-5">
+                                    <LoaderCircle className="size-6 animate-spin text-indigo-600" />
+                                    <div>
+                                        <p className="font-semibold">
+                                            Processing your PDF
+                                        </p>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            {v?.status === 'acquired'
+                                                ? 'Extracting the complete document text.'
+                                                : 'Generating the four-language interpretation.'}{' '}
+                                            This page refreshes automatically.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {v?.status === 'extraction_failed' && (
+                            <Card className="rounded-2xl border-destructive/50">
+                                <CardContent className="p-5">
+                                    <p className="font-semibold text-destructive">
+                                        PDF extraction failed
+                                    </p>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        {v.extraction_error ??
+                                            'Please delete this upload and try another PDF.'}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
                         {capabilities.interpretations && v?.interpretation ? (
                             <>
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-3">
@@ -298,7 +373,7 @@ export default function ArchiveShow({
                                     </Card>
                                 )}
                             </>
-                        ) : capabilities.interpretations ? (
+                        ) : processing ? null : capabilities.interpretations ? (
                             <Card className="rounded-2xl border-dashed">
                                 <CardContent className="p-8 text-center text-muted-foreground">
                                     {t('unavailable')}
@@ -366,6 +441,38 @@ export default function ArchiveShow({
                                 </div>
                             </CardContent>
                         </Card>
+                        {capabilities.delete && (
+                            <Card className="rounded-2xl border-destructive/30">
+                                <CardContent className="p-5">
+                                    <p className="font-semibold">
+                                        Delete private upload
+                                    </p>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        This permanently removes the PDF,
+                                        extracted text, interpretation, and its
+                                        chats.
+                                    </p>
+                                    <Button
+                                        variant="destructive"
+                                        className="mt-4 w-full"
+                                        onClick={() => {
+                                            if (
+                                                window.confirm(
+                                                    'Permanently delete this uploaded document and all related data?',
+                                                )
+                                            ) {
+                                                router.delete(
+                                                    `/archive/uploads/${document.id}`,
+                                                );
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="mr-1 size-4" />{' '}
+                                        Delete upload
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
                         {document.versions.length > 1 && (
                             <Card className="rounded-2xl">
                                 <CardHeader>

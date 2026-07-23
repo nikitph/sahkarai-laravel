@@ -19,7 +19,7 @@ class OpsDashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         return Inertia::render('ops/dashboard', [
-            'sources' => collect(RegulatorySource::cases())->map(fn (RegulatorySource $source) => [
+            'sources' => collect(RegulatorySource::pollableCases())->map(fn (RegulatorySource $source) => [
                 'source' => $source->value,
                 'last_success' => PollRun::query()->where('source', $source)->whereIn('status', ['ok', 'partial'])->latest('completed_at')->first(),
                 'last_failure' => PollRun::query()->where('source', $source)->where('status', 'failed')->latest('completed_at')->first(),
