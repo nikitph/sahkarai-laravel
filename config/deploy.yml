@@ -31,7 +31,7 @@ servers:
   worker:
     hosts:
       - 168.144.27.66
-    cmd: php artisan queue:work --tries=2 --sleep=1 --timeout=180 --max-time=3600
+    cmd: php artisan queue:work --tries=3 --sleep=1 --timeout=180 --max-time=3600
     proxy: false
   scheduler:
     hosts:
