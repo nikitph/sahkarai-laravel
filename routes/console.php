@@ -28,7 +28,7 @@ Artisan::command('conformance:dispatch-scheduled', function (): void {
 })->purpose('Dispatch the tenant-aware scheduled-work conformance jobs');
 
 Artisan::command('regulatory:backfill {--sync}', function (): void {
-    foreach (RegulatorySource::cases() as $source) {
+    foreach (RegulatorySource::pollableCases() as $source) {
         if ($this->option('sync')) {
             RunSourcePoll::dispatchSync($source, 'backfill');
         } else {

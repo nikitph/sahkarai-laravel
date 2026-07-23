@@ -15,6 +15,7 @@ class InterpretationExportController extends Controller
         abort_unless($request->user()->tier->canExportDocuments() && ! $request->user()->isAdmin(), 403);
         abort_unless(in_array($format, ['md', 'pdf'], true), 422, 'export_format_invalid');
         $interpretation->load('version.document');
+        $this->authorize('view', $interpretation->version->document);
         $payload = $interpretation->payloadFor($request->user()->locale->value);
         abort_unless((bool) $payload, 404, 'Interpretation not available for this document.');
         $data = ['document' => $interpretation->version->document, 'interpretation' => $payload, 'meta' => $interpretation];

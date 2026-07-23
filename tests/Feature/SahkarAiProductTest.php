@@ -540,7 +540,10 @@ class SahkarAiProductTest extends TestCase
             ]);
         }
 
-        $result = app(ArchiveSearch::class)->search(['sort' => 'title', 'applicability' => 'pacs']);
+        $result = app(ArchiveSearch::class)->search(
+            ['sort' => 'title', 'applicability' => 'pacs'],
+            User::factory()->create(),
+        );
 
         $this->assertSame(1, $result->total());
         $this->assertSame('Alpha circular', $result->items()[0]->title);

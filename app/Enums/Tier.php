@@ -34,6 +34,11 @@ enum Tier: string
         return $this === self::Tier3;
     }
 
+    public function canUploadDocuments(): bool
+    {
+        return in_array($this, [self::Tier2, self::Tier3], true);
+    }
+
     public function rank(): int
     {
         return match ($this) {

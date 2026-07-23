@@ -72,6 +72,11 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         return $this->tier->canChat();
     }
 
+    public function canUploadDocuments(): bool
+    {
+        return $this->isAdmin() || $this->tier->canUploadDocuments();
+    }
+
     public function preferredLocale(): string
     {
         return $this->locale->value;
@@ -111,6 +116,12 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function documentViews(): HasMany
     {
         return $this->hasMany(DocumentView::class);
+    }
+
+    /** @return HasMany<RegulatoryDocument, $this> */
+    public function uploadedDocuments(): HasMany
+    {
+        return $this->hasMany(RegulatoryDocument::class, 'uploaded_by_user_id');
     }
 
     /** @return BelongsToMany<Organization, $this, Membership, 'pivot'> */

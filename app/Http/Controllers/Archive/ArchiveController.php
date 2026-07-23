@@ -32,7 +32,7 @@ class ArchiveController extends Controller
             'sort' => ['nullable', Rule::in(['newest', 'title'])],
         ]);
 
-        $documents = $archive->search($filters);
+        $documents = $archive->search($filters, $request->user());
         $serializedDocuments = $documents->toArray();
         $serializedDocuments['data'] = $documents->getCollection()->map(fn (RegulatoryDocument $document) => $this->summary($document, $filters['q'] ?? null))->all();
 
@@ -44,11 +44,16 @@ class ArchiveController extends Controller
                 'types' => collect(DocumentType::cases())->map(fn (DocumentType $type) => ['value' => $type->value]),
                 'applicability' => collect(Applicability::cases())->map(fn (Applicability $tag) => ['value' => $tag->value]),
             ],
+            'capabilities' => [
+                'uploads' => $request->user()->canUploadDocuments(),
+                'maxUploadBytes' => 5 * 1024 * 1024,
+            ],
         ]);
     }
 
     public function show(Request $request, RegulatoryDocument $document): Response
     {
+        $this->authorize('view', $document);
         $validated = $request->validate([
             'locale' => ['nullable', Rule::enum(SupportedLocale::class)],
             'version' => ['nullable', 'integer', 'min:1'],
@@ -70,9 +75,10 @@ class ArchiveController extends Controller
 
         return Inertia::render('archive/show', [
             'document' => [
-                ...$document->only(['id', 'title', 'source', 'source_document_id', 'document_type', 'applicability', 'published_at', 'effective_at', 'source_url']),
+                ...$document->only(['id', 'title', 'source', 'source_document_id', 'document_type', 'applicability', 'published_at', 'effective_at', 'source_url', 'upload_description']),
+                'is_user_upload' => $document->isUserUpload(),
                 'latest_version' => [
-                    ...$version->only(['id', 'version', 'status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at']),
+                    ...$version->only(['id', 'version', 'status', 'extraction_status', 'interpretation_status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at', 'extraction_error']),
                     'interpretation' => $canInterpret ? $version->interpretation?->payloadFor($requestedLocale) : null,
                     'interpretation_locale' => $availableLocale,
                     'requested_locale' => $requestedLocale,
@@ -85,12 +91,14 @@ class ArchiveController extends Controller
                 'interpretations' => $canInterpret,
                 'exports' => $request->user()->tier->canExportDocuments(),
                 'chat' => $request->user()->canUseChat(),
+                'delete' => $request->user()->can('delete', $document),
             ],
         ]);
     }
 
     public function download(Request $request, RegulatoryDocument $document): StreamedResponse
     {
+        $this->authorize('view', $document);
         $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
         $version = isset($validated['version'])
             ? $document->versions()->whereKey($validated['version'])->firstOrFail()
@@ -124,8 +132,11 @@ class ArchiveController extends Controller
 
         return [
             ...$document->only(['id', 'title', 'source', 'document_type', 'applicability', 'applicability_tags', 'published_at', 'effective_at']),
+            'is_user_upload' => $document->isUserUpload(),
             'version' => $document->latestVersion?->version,
             'status' => $document->latestVersion?->status,
+            'extraction_status' => $document->latestVersion?->extraction_status,
+            'interpretation_status' => $document->latestVersion?->interpretation_status,
             'snippet' => str($snippet)->limit(180)->toString(),
             'matched_field' => $matchedField,
         ];
