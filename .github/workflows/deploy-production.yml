@@ -22,6 +22,7 @@ jobs:
     env:
       VERSION: ${{ github.event.workflow_run.head_sha }}
       IMAGE: ghcr.io/nikitph/sahkarai-laravel
+      REVERB_IMAGE: ghcr.io/nikitph/sahkarai-laravel-reverb
       KAMAL_REGISTRY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
       APP_KEY: ${{ secrets.APP_KEY }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -64,6 +65,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and publish immutable Reverb image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          provenance: false
+          push: true
+          tags: ${{ env.REVERB_IMAGE }}:${{ env.VERSION }}
+          build-args: SERVICE=sahkarai-laravel-reverb
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Install Kamal
         uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
         with:
@@ -77,7 +90,7 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_laravel_deploy
           chmod 600 ~/.ssh/sahkarai_laravel_deploy
-          printf '%s\n' '168.144.26.122 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGEM0eqt2Ao3XzNHbNoA0O6j/Xc1FN/a6AoCdEpW8pYp' > ~/.ssh/known_hosts
+          printf '%s\n' '168.144.27.66 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJMWP2XgBuegTDZcEQAS01ALXhlF/dys5v1p7MQKzL5/' > ~/.ssh/known_hosts
 
       - name: Map GitHub secrets into Kamal
         run: |
@@ -98,7 +111,9 @@ jobs:
             > .kamal/secrets
 
       - name: Roll out verified revision
-        run: kamal deploy --version="$VERSION" --skip-push
+        run: |
+          kamal deploy --version="$VERSION" --skip-push
+          kamal deploy -c config/deploy.reverb.yml --version="$VERSION" --skip-push
 
       - name: Verify public health endpoint
-        run: curl --fail --retry 8 --retry-delay 3 --retry-all-errors https://app.168.144.26.122.sslip.io/up
+        run: curl --fail --retry 8 --retry-delay 3 --retry-all-errors https://app.168.144.27.66.sslip.io/up

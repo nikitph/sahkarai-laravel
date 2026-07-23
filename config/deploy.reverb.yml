@@ -20,12 +20,12 @@ servers:
   # role must be "web" for kamal-proxy to route to it
   web:
     hosts:
-      - 168.144.26.122
+      - 168.144.27.66
     cmd: php artisan reverb:start --host=0.0.0.0 --port=8080
 
 proxy:
   ssl: true
-  host: ws.168.144.26.122.sslip.io
+  host: ws.168.144.27.66.sslip.io
   app_port: 8080
   healthcheck:
     path: /up          # Reverb answers /up with 200 — verified

@@ -17,7 +17,7 @@ builder:
 servers:
   web:
     hosts:
-      - 168.144.26.122
+      - 168.144.27.66
     # Only the web role migrates. Kamal boots the primary web role to healthy
     # before any other role, so the schema exists before workers start — no
     # pre-deploy hook, no crash-looping workers.
@@ -30,12 +30,12 @@ servers:
         AUTORUN_LARAVEL_MIGRATION_ISOLATION: "true"
   worker:
     hosts:
-      - 168.144.26.122
+      - 168.144.27.66
     cmd: php artisan queue:work --tries=2 --sleep=1 --timeout=180 --max-time=3600
     proxy: false
   scheduler:
     hosts:
-      - 168.144.26.122
+      - 168.144.27.66
     cmd: php artisan schedule:work
     proxy: false
 
@@ -43,7 +43,7 @@ servers:
 # THE question this test exists to answer: does SSE survive this proxy?
 proxy:
   ssl: true
-  host: app.168.144.26.122.sslip.io
+  host: app.168.144.27.66.sslip.io
   app_port: 8080
   healthcheck:
     path: /up
@@ -54,7 +54,7 @@ env:
   clear:
     APP_ENV: production
     APP_DEBUG: "false"
-    APP_URL: https://app.168.144.26.122.sslip.io
+    APP_URL: https://app.168.144.27.66.sslip.io
     AUTO_VERIFY_EMAIL: "true"
     LOG_CHANNEL: stderr
     LOG_STACK: stderr
@@ -74,16 +74,16 @@ env:
     REDIS_PORT: "6379"
     REDIS_QUEUE_RETRY_AFTER: "240"
 
-    REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://app.168.144.26.122.sslip.io)"
+    REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://app.168.144.27.66.sslip.io)"
     INCOME_TAX_FEED_URL: https://wmstatic-prd.incometaxindia.gov.in/circular-rss-feed/-/asset_publisher/bxhj/rss
 
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
     REVERB_APP_KEY: conformancekey
-    REVERB_HOST: ws.168.144.26.122.sslip.io   # via kamal-proxy
+    REVERB_HOST: ws.168.144.27.66.sslip.io   # via kamal-proxy
     REVERB_PORT: "443"
     REVERB_SCHEME: https
-    REVERB_PUBLIC_HOST: ws.168.144.26.122.sslip.io
+    REVERB_PUBLIC_HOST: ws.168.144.27.66.sslip.io
     REVERB_PUBLIC_PORT: "443"
     REVERB_PUBLIC_SCHEME: https
 
@@ -110,7 +110,7 @@ volumes:
 accessories:
   postgres:
     image: postgres:17-alpine
-    host: 168.144.26.122
+    host: 168.144.27.66
     env:
       clear:
         POSTGRES_DB: app
@@ -121,7 +121,7 @@ accessories:
       - data:/var/lib/postgresql/data
   redis:
     image: redis:7-alpine
-    host: 168.144.26.122
+    host: 168.144.27.66
     cmd: redis-server --appendonly yes
     directories:
       - data:/data
