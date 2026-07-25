@@ -58,11 +58,14 @@ type Document = {
     source: string;
     document_type: string;
     applicability: string;
+    reference_number: string | null;
     published_at: string | null;
     effective_at: string | null;
     source_url: string | null;
     upload_description: string | null;
     is_user_upload: boolean;
+    is_admin_upload: boolean;
+    is_public: boolean;
     latest_version: Version | null;
     versions: {
         id: number;
@@ -82,6 +85,7 @@ export default function ArchiveShow({
         exports: boolean;
         chat: boolean;
         delete: boolean;
+        admin: boolean;
     };
 }) {
     const t = useT();
@@ -143,6 +147,19 @@ export default function ArchiveShow({
                                         Private
                                     </Badge>
                                 )}
+                                {document.is_admin_upload &&
+                                    document.is_public && (
+                                        <Badge className="bg-white/10 text-white hover:bg-white/10">
+                                            Admin upload
+                                        </Badge>
+                                    )}
+                                {document.is_admin_upload &&
+                                    !document.is_public && (
+                                        <Badge className="bg-amber-400/15 text-amber-200 hover:bg-amber-400/15">
+                                            <LockKeyhole className="mr-1 size-3" />{' '}
+                                            Admin review
+                                        </Badge>
+                                    )}
                                 <Badge className="bg-white/10 text-white capitalize hover:bg-white/10">
                                     {document.document_type.replaceAll(
                                         '_',
@@ -156,6 +173,11 @@ export default function ArchiveShow({
                             <h1 className="mt-5 text-2xl leading-tight font-semibold md:text-4xl">
                                 {document.title}
                             </h1>
+                            {document.reference_number && (
+                                <p className="mt-2 font-mono text-sm text-slate-300">
+                                    {document.reference_number}
+                                </p>
+                            )}
                             <div className="mt-5 flex flex-wrap gap-5 text-sm text-slate-300">
                                 <span className="flex items-center gap-1.5">
                                     <CalendarDays className="size-4" />{' '}
@@ -181,6 +203,20 @@ export default function ArchiveShow({
                                 </p>
                             )}
                         </section>
+                        {capabilities.admin && document.is_admin_upload && (
+                            <Card className="rounded-2xl border-emerald-300/60 bg-emerald-50/40 dark:bg-emerald-950/10">
+                                <CardContent className="p-5">
+                                    <p className="font-semibold">
+                                        Shared archive intake
+                                    </p>
+                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                                        {document.is_public
+                                            ? 'Text extraction succeeded, so this document is visible in the shared archive. Any metadata supplied at upload remains authoritative; the pipeline only fills missing values.'
+                                            : 'This document remains visible only to admins until complete text extraction succeeds. Pipeline identity, storage, hashes, versions and publication state are system-controlled.'}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
                         {processing && (
                             <Card className="rounded-2xl border-indigo-300/60 bg-indigo-50/40 dark:bg-indigo-950/10">
                                 <CardContent className="flex items-center gap-4 p-5">

@@ -1,6 +1,7 @@
 <?php
 
 use App\Events\ConformancePing;
+use App\Http\Controllers\Archive\AdminUploadedDocumentController;
 use App\Http\Controllers\Archive\ArchiveController;
 use App\Http\Controllers\Archive\IssueReportController;
 use App\Http\Controllers\Archive\UploadedDocumentController;
@@ -94,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware('admin')->prefix('ops')->name('ops.')->group(function () {
         Route::get('/', OpsDashboardController::class)->name('dashboard');
+        Route::post('archive/uploads', [AdminUploadedDocumentController::class, 'store'])->name('archive.uploads.store');
         Route::patch('issues/{issue}', [IssueTriageController::class, 'update'])->name('issues.update');
         Route::post('users/{user}/credits', [CreditAdjustmentController::class, 'store'])->name('users.credits.store');
     });

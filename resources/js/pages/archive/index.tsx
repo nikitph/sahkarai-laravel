@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import {
     ArrowRight,
     Calendar,
+    DatabaseZap,
     FileText,
     LockKeyhole,
     Search,
@@ -30,6 +31,8 @@ type Document = {
     extraction_status: string | null;
     interpretation_status: string | null;
     is_user_upload: boolean;
+    is_admin_upload: boolean;
+    is_public: boolean;
     snippet: string;
 };
 type Page = {
@@ -54,7 +57,11 @@ export default function ArchiveIndex({
         types: Option[];
         applicability: Option[];
     };
-    capabilities: { uploads: boolean; maxUploadBytes: number };
+    capabilities: {
+        privateUploads: boolean;
+        adminUploads: boolean;
+        maxUploadBytes: number;
+    };
 }) {
     const t = useT();
     const maxUploadMegabytes = capabilities.maxUploadBytes / 1024 / 1024;
@@ -99,7 +106,13 @@ export default function ArchiveIndex({
                         publications. Originals remain the source of truth.
                     </p>
                 </div>
-                {capabilities.uploads && (
+                {capabilities.adminUploads && (
+                    <AdminArchiveUpload
+                        maxUploadMegabytes={maxUploadMegabytes}
+                        filterOptions={filterOptions}
+                    />
+                )}
+                {capabilities.privateUploads && (
                     <Card className="mb-6 rounded-2xl border-indigo-300/60 bg-indigo-50/40 dark:bg-indigo-950/10">
                         <CardContent className="p-5">
                             <details>
@@ -382,6 +395,19 @@ export default function ArchiveIndex({
                                                     Private
                                                 </Badge>
                                             )}
+                                            {document.is_admin_upload &&
+                                                document.is_public && (
+                                                    <Badge variant="outline">
+                                                        Admin upload
+                                                    </Badge>
+                                                )}
+                                            {document.is_admin_upload &&
+                                                !document.is_public && (
+                                                    <Badge variant="outline">
+                                                        <LockKeyhole className="mr-1 size-3" />{' '}
+                                                        Admin review
+                                                    </Badge>
+                                                )}
                                             {(
                                                 document.applicability_tags ?? [
                                                     document.applicability,
@@ -475,6 +501,338 @@ export default function ArchiveIndex({
                 </div>
             </div>
         </>
+    );
+}
+
+function AdminArchiveUpload({
+    maxUploadMegabytes,
+    filterOptions,
+}: {
+    maxUploadMegabytes: number;
+    filterOptions: {
+        sources: Option[];
+        types: Option[];
+        applicability: Option[];
+    };
+}) {
+    const upload = useForm<{
+        title: string;
+        source: string;
+        reference_number: string;
+        document_type: string;
+        published_at: string;
+        effective_at: string;
+        applicability: string;
+        applicability_tags: string;
+        description: string;
+        document: File | null;
+    }>({
+        title: '',
+        source: '',
+        reference_number: '',
+        document_type: '',
+        published_at: '',
+        effective_at: '',
+        applicability: '',
+        applicability_tags: '',
+        description: '',
+        document: null,
+    });
+    const selectClass =
+        'border-input bg-background ring-offset-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none';
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        upload.post('/ops/archive/uploads', { forceFormData: true });
+    };
+
+    return (
+        <Card className="mb-6 rounded-2xl border-emerald-300/70 bg-emerald-50/50 dark:bg-emerald-950/10">
+            <CardContent className="p-5">
+                <details>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+                        <div>
+                            <p className="flex items-center gap-2 font-semibold">
+                                <DatabaseZap className="size-4 text-emerald-600" />
+                                Add a PDF to the shared archive
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Admin values take priority. Leave metadata blank
+                                for the extraction pipeline to fill it.
+                            </p>
+                        </div>
+                        <Badge className="bg-emerald-600 text-white">
+                            Admin
+                        </Badge>
+                    </summary>
+                    <form
+                        onSubmit={submit}
+                        className="mt-5 grid gap-4 border-t pt-5 md:grid-cols-2"
+                    >
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label
+                                htmlFor="admin-upload-pdf"
+                                className="text-sm font-medium"
+                            >
+                                PDF (maximum {maxUploadMegabytes} MB)
+                            </label>
+                            <Input
+                                id="admin-upload-pdf"
+                                type="file"
+                                accept="application/pdf,.pdf"
+                                onChange={(event) =>
+                                    upload.setData(
+                                        'document',
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
+                                required
+                            />
+                            {upload.errors.document && (
+                                <p className="text-sm text-destructive">
+                                    {upload.errors.document}
+                                </p>
+                            )}
+                        </div>
+                        <AdminTextField
+                            id="admin-upload-title"
+                            label="Official title"
+                            value={upload.data.title}
+                            error={upload.errors.title}
+                            onChange={(value) => upload.setData('title', value)}
+                        />
+                        <AdminTextField
+                            id="admin-upload-reference"
+                            label="Circular or reference number"
+                            value={upload.data.reference_number}
+                            error={upload.errors.reference_number}
+                            onChange={(value) =>
+                                upload.setData('reference_number', value)
+                            }
+                        />
+                        <AdminSelectField
+                            id="admin-upload-source"
+                            label="Regulatory source"
+                            value={upload.data.source}
+                            error={upload.errors.source}
+                            className={selectClass}
+                            options={filterOptions.sources.filter(
+                                (option) => option.value !== 'user_upload',
+                            )}
+                            onChange={(value) =>
+                                upload.setData('source', value)
+                            }
+                        />
+                        <AdminSelectField
+                            id="admin-upload-type"
+                            label="Document type"
+                            value={upload.data.document_type}
+                            error={upload.errors.document_type}
+                            className={selectClass}
+                            options={filterOptions.types}
+                            onChange={(value) =>
+                                upload.setData('document_type', value)
+                            }
+                        />
+                        <div className="space-y-1.5">
+                            <label
+                                htmlFor="admin-upload-published"
+                                className="text-sm font-medium"
+                            >
+                                Publication date
+                            </label>
+                            <Input
+                                id="admin-upload-published"
+                                type="date"
+                                value={upload.data.published_at}
+                                onChange={(event) =>
+                                    upload.setData(
+                                        'published_at',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            {upload.errors.published_at && (
+                                <p className="text-sm text-destructive">
+                                    {upload.errors.published_at}
+                                </p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5">
+                            <label
+                                htmlFor="admin-upload-effective"
+                                className="text-sm font-medium"
+                            >
+                                Effective date
+                            </label>
+                            <Input
+                                id="admin-upload-effective"
+                                type="date"
+                                value={upload.data.effective_at}
+                                onChange={(event) =>
+                                    upload.setData(
+                                        'effective_at',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                            {upload.errors.effective_at && (
+                                <p className="text-sm text-destructive">
+                                    {upload.errors.effective_at}
+                                </p>
+                            )}
+                        </div>
+                        <AdminSelectField
+                            id="admin-upload-applicability"
+                            label="Primary applicability"
+                            value={upload.data.applicability}
+                            error={upload.errors.applicability}
+                            className={selectClass}
+                            options={filterOptions.applicability}
+                            onChange={(value) =>
+                                upload.setData('applicability', value)
+                            }
+                        />
+                        <AdminTextField
+                            id="admin-upload-tags"
+                            label="Applicability tags"
+                            hint="Comma-separated: pacs, ucb, dccb, stcb, apex, generic"
+                            value={upload.data.applicability_tags}
+                            error={upload.errors.applicability_tags}
+                            onChange={(value) =>
+                                upload.setData('applicability_tags', value)
+                            }
+                        />
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label
+                                htmlFor="admin-upload-description"
+                                className="text-sm font-medium"
+                            >
+                                Archive note
+                            </label>
+                            <Textarea
+                                id="admin-upload-description"
+                                value={upload.data.description}
+                                onChange={(event) =>
+                                    upload.setData(
+                                        'description',
+                                        event.target.value,
+                                    )
+                                }
+                                maxLength={2000}
+                            />
+                            {upload.errors.description && (
+                                <p className="text-sm text-destructive">
+                                    {upload.errors.description}
+                                </p>
+                            )}
+                        </div>
+                        <div className="rounded-xl border border-emerald-200 bg-white/60 p-3 text-xs leading-5 text-muted-foreground md:col-span-2 dark:border-emerald-900 dark:bg-black/10">
+                            Storage paths, internal identity, hashes, ownership,
+                            versions, processing status, publication state and
+                            metadata provenance remain system-controlled.
+                        </div>
+                        {upload.progress && (
+                            <div className="md:col-span-2">
+                                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                                    <span>Uploading</span>
+                                    <span>{upload.progress.percentage}%</span>
+                                </div>
+                                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                    <div
+                                        className="h-full bg-emerald-600 transition-all"
+                                        style={{
+                                            width: `${upload.progress.percentage}%`,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <Button
+                            type="submit"
+                            disabled={upload.processing}
+                            className="bg-emerald-700 hover:bg-emerald-800 md:col-span-2"
+                        >
+                            <Upload className="mr-1 size-4" />
+                            {upload.processing
+                                ? 'Adding to archive…'
+                                : 'Upload to shared archive'}
+                        </Button>
+                    </form>
+                </details>
+            </CardContent>
+        </Card>
+    );
+}
+
+function AdminTextField({
+    id,
+    label,
+    hint,
+    value,
+    error,
+    onChange,
+}: {
+    id: string;
+    label: string;
+    hint?: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <label htmlFor={id} className="text-sm font-medium">
+                {label}
+            </label>
+            <Input
+                id={id}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                maxLength={255}
+            />
+            {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+    );
+}
+
+function AdminSelectField({
+    id,
+    label,
+    value,
+    error,
+    className,
+    options,
+    onChange,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    error?: string;
+    className: string;
+    options: Option[];
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <label htmlFor={id} className="text-sm font-medium">
+                {label}
+            </label>
+            <select
+                id={id}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                className={className}
+            >
+                <option value="">Let the pipeline determine</option>
+                {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {(option.name ?? option.value).replaceAll('_', ' ')}
+                    </option>
+                ))}
+            </select>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
     );
 }
 

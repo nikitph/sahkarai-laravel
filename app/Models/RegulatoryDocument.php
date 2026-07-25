@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property RegulatorySource $source
  * @property string $source_document_id
+ * @property string|null $reference_number
  * @property string $title
  * @property DocumentType $document_type
  * @property Applicability $applicability
@@ -25,7 +26,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $effective_at
  * @property string|null $source_url
  * @property int|null $uploaded_by_user_id
+ * @property int|null $ingested_by_user_id
  * @property string|null $upload_description
+ * @property array<int, string> $manual_metadata_fields
+ * @property bool $is_public
  * @property bool $is_backfill
  * @property Carbon $created_at
  * @property-read Collection<int, DocumentVersion> $versions
@@ -42,8 +46,10 @@ class RegulatoryDocument extends Model
             'document_type' => DocumentType::class,
             'applicability' => Applicability::class,
             'applicability_tags' => 'array',
+            'manual_metadata_fields' => 'array',
             'published_at' => 'date',
             'effective_at' => 'date',
+            'is_public' => 'boolean',
             'is_backfill' => 'boolean',
         ];
     }
@@ -51,10 +57,15 @@ class RegulatoryDocument extends Model
     /** @param Builder<RegulatoryDocument> $query */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        $query->where(function (Builder $query) use ($user): void {
-            $query->whereNull('uploaded_by_user_id')
-                ->orWhere('uploaded_by_user_id', $user->getKey());
-        });
+        $query
+            ->where(function (Builder $query) use ($user): void {
+                $query->whereNull('uploaded_by_user_id')
+                    ->orWhere('uploaded_by_user_id', $user->getKey());
+            })
+            ->when(
+                ! $user->isAdmin(),
+                fn (Builder $query) => $query->where('is_public', true),
+            );
     }
 
     /** @return HasMany<DocumentVersion, $this> */
@@ -75,8 +86,24 @@ class RegulatoryDocument extends Model
         return $this->belongsTo(User::class, 'uploaded_by_user_id');
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function ingestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ingested_by_user_id');
+    }
+
     public function isUserUpload(): bool
     {
         return $this->uploaded_by_user_id !== null;
+    }
+
+    public function isAdminUpload(): bool
+    {
+        return $this->ingested_by_user_id !== null;
+    }
+
+    public function hasManualMetadata(string $field): bool
+    {
+        return in_array($field, $this->manual_metadata_fields ?? [], true);
     }
 }

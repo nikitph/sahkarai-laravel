@@ -62,6 +62,9 @@ class ExtractDocumentText implements ShouldQueue
                 'extracted_at' => now(),
                 'extraction_error' => null,
             ]);
+            $version->document()
+                ->whereNotNull('ingested_by_user_id')
+                ->update(['is_public' => true]);
             GenerateInterpretation::dispatch($version->getKey());
         } catch (Throwable $exception) {
             $version->update([

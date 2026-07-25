@@ -8,21 +8,23 @@ use App\Enums\RegulatorySource;
 use App\Jobs\Ingestion\ExtractDocumentText;
 use App\Models\RegulatoryDocument;
 use App\Models\User;
+use App\Support\Documents\ReadablePdf;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Smalot\PdfParser\Parser;
 use Throwable;
 
 class StoreUploadedDocument
 {
+    public function __construct(private readonly ReadablePdf $readablePdf) {}
+
     /** @param array{title: string, published_at?: string|null, description?: string|null} $metadata */
     public function handle(User $user, UploadedFile $file, array $metadata): RegulatoryDocument
     {
         $contents = $file->getContent();
-        $this->ensureReadablePdf($contents);
+        $this->readablePdf->validate($contents);
 
         $uuid = (string) Str::uuid();
         $date = now()->format('Y/m');
@@ -69,20 +71,5 @@ class StoreUploadedDocument
         }
 
         return $document;
-    }
-
-    private function ensureReadablePdf(string $contents): void
-    {
-        if (! str_starts_with(ltrim($contents), '%PDF-')) {
-            throw ValidationException::withMessages(['document' => 'The uploaded file is not a valid PDF.']);
-        }
-        try {
-            $text = trim((new Parser)->parseContent($contents)->getText());
-        } catch (Throwable) {
-            throw ValidationException::withMessages(['document' => 'The PDF is damaged, encrypted, or cannot be read.']);
-        }
-        if ($text === '') {
-            throw ValidationException::withMessages(['document' => 'No readable text was found in the PDF. Scanned image-only PDFs are not yet supported.']);
-        }
     }
 }

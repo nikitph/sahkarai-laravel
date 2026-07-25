@@ -24,6 +24,9 @@ class NormalizeInterpretationDates
         if (is_string($payload['effective_date'] ?? null)) {
             $payload['effective_date'] = $this->normalize($payload['effective_date']);
         }
+        if (is_string($payload['published_date'] ?? null)) {
+            $payload['published_date'] = $this->normalize($payload['published_date']);
+        }
 
         return $payload;
     }

@@ -59,12 +59,30 @@ class GenerateInterpretation implements ShouldQueue
         );
         $status = $this->status(count($payloads), $exhausted);
         $metadata = $payloads['en'] ?? collect($payloads)->first(fn (array $payload) => array_key_exists('applicability_tags', $payload)) ?? [];
-        $applicabilityTags = $metadata['applicability_tags'] ?? $interpretation->applicability_tags ?? [];
-        $effectiveDate = $metadata['effective_date'] ?? $interpretation->effective_date?->toDateString();
-        $documentType = $metadata['document_type'] ?? $interpretation->document_type;
+        $document = $version->document;
+        $applicabilityTags = match (true) {
+            $document->hasManualMetadata('applicability_tags') => $document->applicability_tags,
+            $document->hasManualMetadata('applicability') => [$document->applicability->value],
+            default => $metadata['applicability_tags'] ?? $interpretation->applicability_tags ?? [],
+        };
+        $effectiveDate = $document->hasManualMetadata('effective_at')
+            ? $document->effective_at?->toDateString()
+            : ($metadata['effective_date'] ?? $interpretation->effective_date?->toDateString());
+        $documentType = $document->hasManualMetadata('document_type')
+            ? $document->document_type->value
+            : ($metadata['document_type'] ?? $interpretation->document_type);
         $deadlines = $metadata['deadlines'] ?? $interpretation->deadlines ?? [];
         $localePayloads = collect($payloads)->map(
-            fn (array $payload) => Arr::except($payload, ['applicability_tags', 'effective_date', 'deadlines', 'document_type']),
+            fn (array $payload) => Arr::except($payload, [
+                'applicability_tags',
+                'effective_date',
+                'deadlines',
+                'document_type',
+                'document_title',
+                'regulatory_source',
+                'reference_number',
+                'published_date',
+            ]),
         )->all();
 
         $interpretation->update([

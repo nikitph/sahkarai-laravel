@@ -45,7 +45,8 @@ class ArchiveController extends Controller
                 'applicability' => collect(Applicability::cases())->map(fn (Applicability $tag) => ['value' => $tag->value]),
             ],
             'capabilities' => [
-                'uploads' => $request->user()->canUploadDocuments(),
+                'privateUploads' => ! $request->user()->isAdmin() && $request->user()->canUploadDocuments(),
+                'adminUploads' => $request->user()->isAdmin(),
                 'maxUploadBytes' => 5 * 1024 * 1024,
             ],
         ]);
@@ -75,8 +76,9 @@ class ArchiveController extends Controller
 
         return Inertia::render('archive/show', [
             'document' => [
-                ...$document->only(['id', 'title', 'source', 'source_document_id', 'document_type', 'applicability', 'published_at', 'effective_at', 'source_url', 'upload_description']),
+                ...$document->only(['id', 'title', 'source', 'source_document_id', 'reference_number', 'document_type', 'applicability', 'published_at', 'effective_at', 'source_url', 'upload_description', 'is_public']),
                 'is_user_upload' => $document->isUserUpload(),
+                'is_admin_upload' => $document->isAdminUpload(),
                 'latest_version' => [
                     ...$version->only(['id', 'version', 'status', 'extraction_status', 'interpretation_status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at', 'extraction_error']),
                     'interpretation' => $canInterpret ? $version->interpretation?->payloadFor($requestedLocale) : null,
@@ -92,6 +94,7 @@ class ArchiveController extends Controller
                 'exports' => $request->user()->tier->canExportDocuments(),
                 'chat' => $request->user()->canUseChat(),
                 'delete' => $request->user()->can('delete', $document),
+                'admin' => $request->user()->isAdmin(),
             ],
         ]);
     }
@@ -133,6 +136,8 @@ class ArchiveController extends Controller
         return [
             ...$document->only(['id', 'title', 'source', 'document_type', 'applicability', 'applicability_tags', 'published_at', 'effective_at']),
             'is_user_upload' => $document->isUserUpload(),
+            'is_admin_upload' => $document->isAdminUpload(),
+            'is_public' => $document->is_public,
             'version' => $document->latestVersion?->version,
             'status' => $document->latestVersion?->status,
             'extraction_status' => $document->latestVersion?->extraction_status,

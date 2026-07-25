@@ -44,6 +44,10 @@ class GenerateLocaleInterpretation
             'applicability_tags.*' => ['required', 'in:pacs,ucb,dccb,stcb,apex,generic'],
             'effective_date' => ['nullable', 'date_format:Y-m-d'],
             'document_type' => ['required', 'in:master_direction,circular,notification,press_release,faq,other'],
+            'document_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'regulatory_source' => ['sometimes', 'nullable', 'in:rbi,income_tax,gst'],
+            'reference_number' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'published_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
         ])->validate();
         $validated['glossary'] ??= [];
 
@@ -56,12 +60,37 @@ class GenerateLocaleInterpretation
 
         if ($locale === SupportedLocale::English) {
             $tags = $validated['applicability_tags'];
-            $version->document->update([
+            $document = $version->document;
+            $updates = [];
+            $candidates = [
                 'applicability' => $tags[0] ?? 'generic',
                 'applicability_tags' => $tags,
                 'effective_at' => $validated['effective_date'],
                 'document_type' => $validated['document_type'],
-            ]);
+            ];
+
+            if ($document->isAdminUpload()) {
+                $candidates += [
+                    'title' => $validated['document_title'] ?? null,
+                    'source' => $validated['regulatory_source'] ?? null,
+                    'reference_number' => $validated['reference_number'] ?? null,
+                    'published_at' => $validated['published_date'] ?? null,
+                ];
+            }
+
+            foreach ($candidates as $field => $value) {
+                if ($field === 'applicability' && $document->hasManualMetadata('applicability_tags')) {
+                    continue;
+                }
+
+                if (! $document->hasManualMetadata($field) && filled($value)) {
+                    $updates[$field] = $value;
+                }
+            }
+
+            if ($updates !== []) {
+                $document->update($updates);
+            }
         }
 
         return $validated;
