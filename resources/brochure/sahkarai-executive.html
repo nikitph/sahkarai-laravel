@@ -1,0 +1,580 @@
+<!doctype html>
+<!-- Source artwork for the checked-in SahkarAI executive brochure. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SahkarAI Executive Brochure</title>
+    <style>
+        @font-face {
+            font-family: "Instrument Sans";
+            src: url("../../public/build/assets/instrument-sans-400-normal-DRC__1Mx.woff2") format("woff2");
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: "Instrument Sans";
+            src: url("../../public/build/assets/instrument-sans-500-normal-Dk9ku72i.woff2") format("woff2");
+            font-weight: 500;
+        }
+        @font-face {
+            font-family: "Instrument Sans";
+            src: url("../../public/build/assets/instrument-sans-600-normal-B7fBEWYG.woff2") format("woff2");
+            font-weight: 600;
+        }
+        :root {
+            --ink: #102238;
+            --ink2: #344a5f;
+            --muted: #6b7c8d;
+            --paper: #fbfdfc;
+            --sky: #0ea5e9;
+            --sky-dark: #0284c7;
+            --teal: #0d9488;
+            --emerald: #10b981;
+            --emerald-dark: #047857;
+            --mint: #ddf7ee;
+            --cyan: #e6f7fd;
+            --line: #dce8e6;
+            --navy: #10263e;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            background: #dbe7e5;
+            font-family: "Instrument Sans", Arial, sans-serif;
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+        }
+        body { width: 1240px; }
+        .page {
+            display: none;
+            position: relative;
+            width: 1240px;
+            height: 1754px;
+            overflow: hidden;
+            background: var(--paper);
+        }
+        .page.active { display: block; }
+        .orb {
+            position: absolute;
+            border-radius: 999px;
+            pointer-events: none;
+        }
+        .orb.sky { width: 610px; height: 610px; right: -250px; top: -250px; background: var(--cyan); }
+        .orb.mint { width: 520px; height: 520px; left: -280px; bottom: -250px; background: var(--mint); }
+        .brand {
+            position: absolute;
+            left: 84px;
+            top: 76px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            z-index: 5;
+        }
+        .brand img { width: 88px; height: 68px; object-fit: contain; }
+        .brand span { font-size: 30px; font-weight: 600; letter-spacing: -1px; }
+        .brand.inverse span { color: white; }
+        .brand.inverse img { filter: brightness(0) invert(1); }
+        .page-two .brand { display: none; }
+        .page-two::before {
+            content: "";
+            position: absolute;
+            left: 84px;
+            top: 76px;
+            width: 88px;
+            height: 68px;
+            z-index: 20;
+            background: center / contain no-repeat url("sahkarai-logo-safe.svg");
+        }
+        .page-two::after {
+            content: "SahkarAI";
+            position: absolute;
+            left: 190px;
+            top: 91px;
+            z-index: 20;
+            color: var(--navy);
+            font-size: 30px;
+            line-height: 1;
+            font-weight: 600;
+            letter-spacing: -1px;
+        }
+        .eyebrow {
+            color: var(--teal);
+            font-size: 17px;
+            line-height: 1;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+        .eyebrow::after {
+            content: "";
+            display: block;
+            width: 58px;
+            height: 4px;
+            margin-top: 17px;
+            border-radius: 4px;
+            background: currentColor;
+        }
+        .audience {
+            position: absolute;
+            right: 88px;
+            top: 98px;
+            padding: 14px 25px;
+            border: 1px solid rgba(13, 148, 136, .16);
+            border-radius: 999px;
+            background: rgba(255,255,255,.86);
+            color: var(--teal);
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            z-index: 4;
+        }
+        .footer {
+            position: absolute;
+            left: 84px;
+            right: 84px;
+            bottom: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #6d8192;
+            font-size: 14px;
+            letter-spacing: .4px;
+            z-index: 5;
+        }
+        .hero-copy {
+            position: absolute;
+            left: 84px;
+            top: 260px;
+            width: 520px;
+            z-index: 2;
+        }
+        .hero-copy h1 {
+            margin: 58px 0 0;
+            font-size: 88px;
+            line-height: .98;
+            letter-spacing: -5px;
+            font-weight: 600;
+        }
+        .hero-copy h1 span { display: block; color: var(--teal); margin-top: 18px; }
+        .hero-copy p {
+            width: 500px;
+            margin: 50px 0 0;
+            color: var(--ink2);
+            font-size: 26px;
+            line-height: 1.46;
+        }
+        .cta {
+            width: 500px;
+            height: 92px;
+            margin-top: 40px;
+            padding: 0 26px 0 34px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 999px;
+            background: var(--navy);
+            color: white;
+        }
+        .cta strong { display: block; font-size: 20px; }
+        .cta small { display: block; margin-top: 7px; color: #c0d2df; font-size: 14px; }
+        .cta .arrow {
+            width: 44px; height: 44px; display: grid; place-items: center;
+            border-radius: 50%; background: var(--emerald); font-size: 25px; font-weight: 600;
+        }
+        .hero-product {
+            position: absolute;
+            left: 670px;
+            top: 330px;
+            width: 474px;
+            height: 980px;
+            z-index: 3;
+        }
+        .paper-layer {
+            position: absolute;
+            inset: 0;
+            border-radius: 52px;
+        }
+        .paper-layer.one { transform: translate(30px, -28px); background: #d8f4ed; }
+        .paper-layer.two { transform: translate(16px, -14px); background: #e3f5fb; }
+        .product-card {
+            position: absolute;
+            inset: 0;
+            padding: 48px 42px;
+            border: 2px solid var(--line);
+            border-radius: 52px;
+            background: white;
+            box-shadow: 18px 24px 0 var(--navy);
+        }
+        .product-head { display: flex; justify-content: space-between; align-items: center; }
+        .status {
+            padding: 13px 21px; border-radius: 999px; background: var(--mint);
+            color: var(--emerald-dark); font-size: 14px; font-weight: 600;
+        }
+        .version { color: var(--muted); font-size: 15px; font-weight: 600; }
+        .pdf-block {
+            height: 160px;
+            margin-top: 50px;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 58px 1fr;
+            align-items: center;
+            gap: 22px;
+            border: 2px solid var(--line);
+            border-radius: 28px;
+            background: #f7fafc;
+        }
+        .pdf-icon {
+            width: 58px; height: 58px; display: grid; place-items: center;
+            border-radius: 50%; background: var(--sky); color: white; font-size: 17px; font-weight: 600;
+        }
+        .pdf-block strong { display:block; font-size: 21px; }
+        .pdf-block small { display:block; margin-top: 8px; color: var(--muted); font-size: 14px; }
+        .interpret-label { margin-top: 48px; color: var(--teal); font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+        .product-card h2 { margin: 25px 0 0; font-size: 36px; line-height: 1.24; letter-spacing: -1.2px; }
+        .takeaways { margin-top: 34px; display: grid; gap: 18px; }
+        .takeaway {
+            height: 70px; padding: 0 20px; display: flex; align-items: center; gap: 17px;
+            border: 2px solid var(--line); border-radius: 22px; background: #f4f8f9;
+            color: var(--ink2); font-size: 15px; font-weight: 600;
+        }
+        .takeaway b {
+            width: 42px; height: 42px; display: grid; place-items: center;
+            flex: 0 0 42px; border-radius: 50%; background: var(--teal); color: white; font-size: 13px;
+        }
+        .progress-copy { margin-top: 54px; display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; }
+        .progress-copy strong { color: var(--teal); }
+        .progress { height: 10px; margin-top: 16px; border-radius: 99px; background: var(--teal); }
+        .proofs {
+            position: absolute;
+            left: 84px;
+            top: 1128px;
+            width: 500px;
+            display: grid;
+            gap: 22px;
+        }
+        .proof {
+            min-height: 128px;
+            padding: 27px 30px;
+            display: grid;
+            grid-template-columns: 18px 1fr;
+            gap: 18px;
+            border: 2px solid var(--line);
+            border-radius: 28px;
+            background: white;
+            box-shadow: 0 10px 22px rgba(16, 34, 56, .04);
+        }
+        .proof i { width: 18px; height: 18px; margin-top: 4px; border-radius: 50%; background: var(--sky); }
+        .proof:nth-child(2) i { background: var(--teal); }
+        .proof:nth-child(3) i { background: var(--emerald); }
+        .proof strong { display:block; font-size: 21px; }
+        .proof p { margin: 13px 0 0; color: var(--muted); font-size: 16px; line-height: 1.35; }
+
+        .section-intro {
+            position: absolute;
+            left: 84px;
+            right: 84px;
+            top: 240px;
+        }
+        .section-intro h1 {
+            margin: 42px 0 0;
+            font-size: 62px;
+            line-height: 1.06;
+            letter-spacing: -3px;
+        }
+        .section-intro h1 span { display: block; color: var(--teal); margin-top: 12px; }
+        .section-intro > p {
+            max-width: 990px; margin: 34px 0 0; color: var(--ink2);
+            font-size: 24px; line-height: 1.45;
+        }
+        .problem-grid {
+            position: absolute;
+            left: 84px;
+            right: 84px;
+            top: 590px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 38px;
+        }
+        .problem {
+            min-height: 300px;
+            padding: 32px;
+            border: 2px solid var(--line);
+            border-radius: 34px;
+            background: white;
+            box-shadow: 11px 14px 0 var(--navy);
+        }
+        .num-box {
+            width: 68px; height: 60px; display:grid; place-items:center;
+            border-radius: 18px; background: var(--sky); color:white; font-size:16px; font-weight:600;
+        }
+        .problem:nth-child(2) .num-box { background: var(--teal); }
+        .problem:nth-child(3) .num-box { background: var(--emerald); }
+        .problem h3 { margin: 38px 0 0; font-size: 27px; }
+        .problem p { margin: 20px 0 0; color:var(--muted); font-size:18px; line-height:1.45; }
+        .workflow {
+            position:absolute; left:84px; right:84px; top:960px; height:610px;
+            padding:54px;
+            border:2px solid #cde9e4; border-radius:44px; background:#eff8f6;
+        }
+        .workflow h2 { margin:34px 0 0; font-size:38px; letter-spacing:-1.5px; }
+        .workflow-grid {
+            margin-top:60px;
+            display:grid;
+            grid-template-columns:repeat(3,1fr);
+            gap:26px;
+        }
+        .flow-card {
+            position:relative;
+            height:260px;
+            padding:30px;
+            border:1px solid #d4e9e5;
+            border-radius:28px;
+            background:rgba(255,255,255,.7);
+        }
+        .flow-top { display:flex; align-items:center; justify-content:space-between; }
+        .flow-node {
+            width:68px; height:68px; display:grid; place-items:center;
+            border-radius:50%; color:white; background:var(--sky); font-size:17px; font-weight:600;
+        }
+        .flow-card:nth-child(2) .flow-node { background:var(--teal); }
+        .flow-card:nth-child(3) .flow-node { background:var(--emerald); }
+        .flow-arrow {
+            color:#92c9c0; font-size:30px; font-weight:400;
+        }
+        .flow-card:last-child .flow-arrow { visibility:hidden; }
+        .flow-card h3 { margin:28px 0 0; font-size:25px; }
+        .flow-card p { margin:17px 0 0; color:var(--muted); font-size:17px; line-height:1.42; }
+        .source-row {
+            position:absolute; left:84px; right:84px; bottom:94px;
+            display:flex; align-items:center; gap:16px;
+        }
+        .source-pill { padding:12px 21px; border-radius:999px; font-size:14px; font-weight:600; }
+        .source-pill.rbi { background:var(--cyan); color:var(--sky-dark); }
+        .source-pill.it { background:var(--mint); color:var(--emerald-dark); }
+        .source-pill.gst { background:#fef3c7; color:#b45309; }
+        .source-row p { margin-left:auto; color:var(--muted); font-size:15px; }
+
+        .feature-shell {
+            position:absolute; left:84px; right:84px; top:555px;
+            height:565px; padding:42px;
+            border:2px solid var(--line); border-radius:40px; background:white;
+        }
+        .feature-grid { display:grid; grid-template-columns:1fr 1fr; gap:30px 50px; }
+        .feature {
+            min-height:132px;
+            display:grid; grid-template-columns:74px 1fr; gap:20px; align-items:start;
+        }
+        .feature .number {
+            width:68px; height:68px; display:grid; place-items:center; border-radius:50%;
+            background:var(--sky); color:white; font-size:15px; font-weight:600;
+        }
+        .feature:nth-child(2) .number, .feature:nth-child(5) .number { background:var(--teal); }
+        .feature:nth-child(3) .number, .feature:nth-child(6) .number { background:var(--emerald); }
+        .feature h3 { margin:7px 0 0; font-size:22px; line-height:1.2; }
+        .feature p { margin:12px 0 0; color:var(--muted); font-size:16px; line-height:1.4; }
+        .page-three .feature-shell {
+            top: 590px;
+            height: 530px;
+            padding: 36px 42px;
+        }
+        .page-three .feature-grid { gap: 20px 50px; }
+        .page-three .feature { min-height: 120px; }
+        .lens-title {
+            position:absolute; left:84px; top:1168px; margin:0;
+            font-size:38px; letter-spacing:-1.2px;
+        }
+        .lens-grid {
+            position:absolute; left:84px; right:84px; top:1245px;
+            display:grid; grid-template-columns:repeat(3,1fr); gap:38px;
+        }
+        .lens {
+            height:220px; padding:34px 28px 28px; position:relative;
+            border:2px solid var(--line); border-radius:28px; background:white;
+        }
+        .lens::before {
+            content:""; position:absolute; left:-2px; right:-2px; top:-2px; height:18px;
+            border-radius:28px 28px 0 0; background:var(--sky);
+        }
+        .lens:nth-child(2)::before { background:var(--teal); }
+        .lens:nth-child(3)::before { background:var(--emerald); }
+        .lens h3 { margin:18px 0 0; font-size:22px; }
+        .lens p { margin:24px 0 0; color:var(--muted); font-size:16px; line-height:1.42; }
+        .authority {
+            position:absolute; left:84px; right:84px; top:1510px; height:145px;
+            padding:32px 40px; border-radius:34px; background:var(--navy); color:white;
+        }
+        .authority h3 { margin:0; font-size:25px; }
+        .authority p { margin:18px 0 0; color:#c2d4e1; font-size:15px; line-height:1.4; }
+
+        .cta-page {
+            background:linear-gradient(180deg, #12b99c 0 47%, #f9fcfb 47% 100%);
+        }
+        .rings { position:absolute; right:-140px; top:-180px; width:660px; height:660px; }
+        .rings i { position:absolute; inset:0; border:3px solid rgba(255,255,255,.9); border-radius:50%; }
+        .rings i:nth-child(2) { inset:80px; }
+        .rings i:nth-child(3) { inset:160px; }
+        .rings i:nth-child(4) { inset:240px; }
+        .cta-page .audience { color:var(--teal); }
+        .cta-hero {
+            position:absolute; left:84px; right:84px; top:275px; color:white;
+        }
+        .cta-hero h1 { margin:0; max-width:960px; font-size:74px; line-height:1.03; letter-spacing:-3.5px; }
+        .cta-hero p { margin:42px 0 0; max-width:980px; color:#ddfaf3; font-size:24px; line-height:1.45; }
+        .pilot-grid {
+            position:absolute; left:84px; right:84px; top:640px; padding-top:46px;
+            display:grid; grid-template-columns:repeat(3,1fr); gap:38px;
+            border-top:1px solid rgba(255,255,255,.36); color:white;
+        }
+        .pilot { display:grid; grid-template-columns:68px 1fr; gap:22px; }
+        .pilot b {
+            width:64px; height:64px; display:grid; place-items:center;
+            border-radius:50%; background:white; color:var(--teal); font-size:14px;
+        }
+        .pilot h3 { margin:2px 0 0; font-size:21px; }
+        .pilot p { margin:13px 0 0; color:#d7f6ef; font-size:15px; line-height:1.4; }
+        .demo-card {
+            position:absolute; left:84px; right:84px; top:845px; height:655px;
+            padding:62px;
+            border:2px solid var(--line); border-radius:44px; background:white;
+            box-shadow:14px 16px 0 var(--navy);
+        }
+        .demo-card h2 { margin:42px 0 0; font-size:49px; letter-spacing:-2px; }
+        .demo-card > p { width:610px; margin:32px 0 0; color:var(--ink2); font-size:21px; line-height:1.5; }
+        .url-box {
+            width:610px; height:115px; margin-top:36px; padding:27px 34px;
+            border:2px solid var(--line); border-radius:26px; background:#f2f8f7;
+        }
+        .url-box strong { display:block; color:var(--teal); font-size:18px; }
+        .url-box span { display:block; margin-top:11px; font-size:18px; }
+        .qr-shell {
+            position:absolute; right:68px; top:180px; width:260px; height:260px;
+            display:grid; place-items:center;
+            border:2px solid #cbe8e3; border-radius:34px; background:#f3faf8;
+        }
+        .qr-shell img { width:210px; height:210px; }
+        .qr-caption { position:absolute; right:125px; top:458px; color:var(--muted); font-size:14px; }
+        .trust-line { margin-top:52px; font-size:17px; font-weight:600; letter-spacing:.5px; }
+        .disclaimer {
+            position:absolute; left:84px; right:84px; top:1545px;
+            color:var(--muted); font-size:14px; line-height:1.45;
+        }
+        .cta-page .footer { bottom:47px; }
+    </style>
+</head>
+<body>
+<section class="page" data-page="1">
+    <div class="orb sky"></div><div class="orb mint"></div>
+    <div class="brand"><img src="sahkarai-logo-safe.svg" alt=""><span>SahkarAI</span></div>
+    <div class="audience">For Managing Directors</div>
+    <div class="hero-copy">
+        <div class="eyebrow">Regulatory intelligence for Indian co-operative banks</div>
+        <h1>From circular<span>to clarity.</span></h1>
+        <p>Follow the publication. Understand the change. Ask better questions - with the original always in view.</p>
+        <div class="cta"><div><strong>Bring one circular that matters.</strong><small>See the complete SahkarAI workflow.</small></div><span class="arrow">›</span></div>
+    </div>
+    <div class="hero-product">
+        <div class="paper-layer one"></div><div class="paper-layer two"></div>
+        <div class="product-card">
+            <div class="product-head"><span class="status">SOURCE PRESERVED</span><span class="version">RBI / v01</span></div>
+            <div class="pdf-block"><div class="pdf-icon">PDF</div><div><strong>Regulatory circular</strong><small>Original document / 12 pages</small></div></div>
+            <div class="interpret-label">PLAIN-LANGUAGE INTERPRETATION</div>
+            <h2>What changed - and what your bank should review next.</h2>
+            <div class="takeaways">
+                <div class="takeaway"><b>01</b>Scope and applicability</div>
+                <div class="takeaway"><b>02</b>Key dates and obligations</div>
+                <div class="takeaway"><b>03</b>Questions for your team</div>
+            </div>
+            <div class="progress-copy"><span>Extraction complete</span><strong>100%</strong></div><div class="progress"></div>
+        </div>
+    </div>
+    <div class="proofs">
+        <div class="proof"><i></i><div><strong>Original first</strong><p>Source file and metadata stay visible.</p></div></div>
+        <div class="proof"><i></i><div><strong>Four languages</strong><p>English, Hindi, Gujarati and Marathi.</p></div></div>
+        <div class="proof"><i></i><div><strong>Version-bound</strong><p>Answers stay tied to the selected publication.</p></div></div>
+    </div>
+    <div class="footer"><span>SAHKARAI&nbsp;&nbsp;|&nbsp;&nbsp;REGULATORY INTELLIGENCE</span><span>01 / 04</span></div>
+</section>
+
+<section class="page page-two" data-page="2">
+    <div class="orb sky"></div><div class="orb mint"></div>
+    <div class="brand"><img src="sahkarai-logo-safe.svg" alt=""><span>SahkarAI</span></div>
+    <div class="section-intro">
+        <div class="eyebrow">The executive reality</div>
+        <h1>The circular is published.<span>The clock has started.</span></h1>
+        <p>The challenge is rarely access alone. It is turning dense, fragmented material into a shared understanding that teams can verify and act on.</p>
+    </div>
+    <div class="problem-grid">
+        <div class="problem"><div class="num-box">01</div><h3>Fragmented</h3><p>Updates arrive across issuers, formats and dates. Context gets scattered.</p></div>
+        <div class="problem"><div class="num-box">02</div><h3>Dense</h3><p>Legal and regulatory language slows comprehension across functions.</p></div>
+        <div class="problem"><div class="num-box">03</div><h3>Ambiguous</h3><p>The first management question is simple: what should we review now?</p></div>
+    </div>
+    <div class="workflow">
+        <div class="eyebrow">A governed reading workflow</div>
+        <h2>Discover. Understand. Investigate.</h2>
+        <div class="workflow-grid">
+            <div class="flow-card"><div class="flow-top"><span class="flow-node">I</span><span class="flow-arrow">›</span></div><h3>Discover</h3><p>Filter the archive by issuer, date, type and applicability.</p></div>
+            <div class="flow-card"><div class="flow-top"><span class="flow-node">II</span><span class="flow-arrow">›</span></div><h3>Understand</h3><p>Compare the original with a structured interpretation.</p></div>
+            <div class="flow-card"><div class="flow-top"><span class="flow-node">III</span><span class="flow-arrow">›</span></div><h3>Investigate</h3><p>Ask follow-up questions against the exact version.</p></div>
+        </div>
+    </div>
+    <div class="source-row"><span class="source-pill rbi">RBI</span><span class="source-pill it">INCOME TAX</span><span class="source-pill gst">GST</span><p>One dependable place for the material your bank follows.</p></div>
+    <div class="footer"><span>SAHKARAI&nbsp;&nbsp;|&nbsp;&nbsp;REGULATORY INTELLIGENCE</span><span>02 / 04</span></div>
+</section>
+
+<section class="page page-three" data-page="3">
+    <div class="orb sky"></div><div class="orb mint"></div>
+    <div class="brand"><img src="sahkarai-logo-safe.svg" alt=""><span>SahkarAI</span></div>
+    <div class="section-intro">
+        <div class="eyebrow">What SahkarAI brings together</div>
+        <h1>A clearer line from<span>publication to decision.</span></h1>
+        <p>Designed to improve regulatory reading without obscuring the source or pretending interpretation is professional advice.</p>
+    </div>
+    <div class="feature-shell">
+        <div class="feature-grid">
+            <div class="feature"><span class="number">01</span><div><h3>Searchable regulatory archive</h3><p>Find current and historical publications with the original one click away.</p></div></div>
+            <div class="feature"><span class="number">02</span><div><h3>Structured interpretation</h3><p>Surface scope, key dates, takeaways and useful regulatory terms.</p></div></div>
+            <div class="feature"><span class="number">03</span><div><h3>Four-language access</h3><p>Read in English, Hindi, Gujarati or Marathi with fallback made explicit.</p></div></div>
+            <div class="feature"><span class="number">04</span><div><h3>Document-grounded AI</h3><p>Open a private conversation tied to one immutable document version.</p></div></div>
+            <div class="feature"><span class="number">05</span><div><h3>Preference-led updates</h3><p>Choose the sources and cadence relevant to your institution.</p></div></div>
+            <div class="feature"><span class="number">06</span><div><h3>Your own PDFs</h3><p>Bring internal or specialist material into the same extraction workflow.</p></div></div>
+        </div>
+    </div>
+    <h2 class="lens-title">One product. Different leadership lenses.</h2>
+    <div class="lens-grid">
+        <div class="lens"><h3>Managing Director</h3><p>A concise view of what changed, what needs attention and where to ask next.</p></div>
+        <div class="lens"><h3>Compliance</h3><p>Faster discovery, interpretation and traceability back to the publication.</p></div>
+        <div class="lens"><h3>Operations</h3><p>Clearer language for translating regulatory reading into implementation review.</p></div>
+    </div>
+    <div class="authority"><h3>The source remains the authority.</h3><p>Every archive entry preserves the original and its metadata. Processing failures remain visible instead of being presented as finished guidance.</p></div>
+    <div class="footer"><span>SAHKARAI&nbsp;&nbsp;|&nbsp;&nbsp;REGULATORY INTELLIGENCE</span><span>03 / 04</span></div>
+</section>
+
+<section class="page cta-page" data-page="4">
+    <div class="rings"><i></i><i></i><i></i><i></i></div>
+    <div class="brand inverse"><img src="sahkarai-logo-safe.svg" alt=""><span>SahkarAI</span></div>
+    <div class="audience">Executive walkthrough</div>
+    <div class="cta-hero"><h1>Give every regulatory conversation a source.</h1><p>Start with one publication that matters to your bank. See the original, the interpretation and the questions it enables - in one focused session.</p></div>
+    <div class="pilot-grid">
+        <div class="pilot"><b>01</b><div><h3>Choose</h3><p>Bring one RBI, Income Tax or GST publication.</p></div></div>
+        <div class="pilot"><b>02</b><div><h3>Compare</h3><p>Read the source alongside the structured interpretation.</p></div></div>
+        <div class="pilot"><b>03</b><div><h3>Ask</h3><p>Test the questions your leadership team actually has.</p></div></div>
+    </div>
+    <div class="demo-card">
+        <div class="eyebrow">See SahkarAI in action</div>
+        <h2>From circular to clarity.</h2>
+        <p>Scan to explore SahkarAI, or open the address below. An executive demonstration works best with a real circular from your institution's current agenda.</p>
+        <div class="url-box"><strong>EXPLORE</strong><span>app.168.144.27.66.sslip.io</span></div>
+        <div class="qr-shell"><img src="qr.svg" alt="QR code"></div>
+        <div class="qr-caption">SCAN TO OPEN</div>
+        <div class="trust-line">SOURCE-FIRST&nbsp;&nbsp;/&nbsp;&nbsp;MULTILINGUAL&nbsp;&nbsp;/&nbsp;&nbsp;VERSION-BOUND</div>
+    </div>
+    <div class="disclaimer">SahkarAI provides educational regulatory information. It is not a substitute for legal, tax, compliance or other professional advice. Institutions should verify actions against the original publication.</div>
+    <div class="footer"><span>SAHKARAI&nbsp;&nbsp;|&nbsp;&nbsp;REGULATORY INTELLIGENCE</span><span>04 / 04</span></div>
+</section>
+<script>
+    const page = new URLSearchParams(location.search).get("page") || "1";
+    document.querySelector(`[data-page="${page}"]`).classList.add("active");
+</script>
+</body>
+</html>
