@@ -141,3 +141,99 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    .landing-gradient-text {
+        background-size: 200% auto;
+    }
+
+    .landing-nav-link {
+        position: relative;
+    }
+
+    .landing-nav-link::after {
+        position: absolute;
+        right: 0;
+        bottom: -0.35rem;
+        left: 0;
+        height: 1px;
+        content: '';
+        background: currentColor;
+        transform: scaleX(0);
+        transform-origin: right;
+        transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .landing-nav-link:hover::after,
+    .landing-nav-link:focus-visible::after {
+        transform: scaleX(1);
+        transform-origin: left;
+    }
+
+    .landing-brand svg {
+        transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .landing-brand:hover svg {
+        transform: translateY(-2px) rotate(-3deg) scale(1.04);
+    }
+
+    .landing-cta {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+    }
+
+    .landing-cta::before {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        content: '';
+        background: linear-gradient(
+            105deg,
+            transparent 30%,
+            rgb(255 255 255 / 24%) 48%,
+            transparent 66%
+        );
+        transform: translateX(-125%);
+        transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .landing-cta:hover::before,
+    .landing-cta:focus-visible::before {
+        transform: translateX(125%);
+    }
+
+    .landing-cta svg {
+        transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .landing-cta:hover svg,
+    .landing-cta:focus-visible svg {
+        transform: translateX(0.2rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-gradient-text {
+        background-size: auto;
+    }
+
+    .landing-nav-link::after,
+    .landing-brand svg,
+    .landing-cta::before,
+    .landing-cta svg {
+        transition-duration: 0.01ms;
+    }
+
+    .landing-brand:hover svg,
+    .landing-cta:hover svg,
+    .landing-cta:focus-visible svg {
+        transform: none;
+    }
+
+    .landing-cta:hover::before,
+    .landing-cta:focus-visible::before {
+        transform: translateX(-125%);
+    }
+}
