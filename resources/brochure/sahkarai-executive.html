@@ -460,6 +460,60 @@
             color:var(--muted); font-size:14px; line-height:1.45;
         }
         .cta-page .footer { bottom:47px; }
+
+        body.localized {
+            font-family: "Kohinoor Devanagari", "Devanagari Sangam MN", sans-serif;
+        }
+        body.localized .brand span,
+        body.localized .version,
+        body.localized .pdf-icon,
+        body.localized .source-pill,
+        body.localized .url-box span,
+        body.localized .footer {
+            font-family: "Instrument Sans", sans-serif;
+        }
+        body.localized .hero-copy h1 {
+            font-size: 67px;
+            line-height: 1.16;
+            letter-spacing: -1px;
+        }
+        body.localized .hero-copy > p { font-size: 23px; line-height: 1.55; }
+        body.localized .cta strong { font-size: 17px; }
+        body.localized .cta small { font-size: 12px; }
+        body.localized .product-card h2 { font-size: 33px; line-height: 1.38; letter-spacing: -.5px; }
+        body.localized .takeaway { font-size: 14px; }
+        body.localized .proof strong { font-size: 19px; }
+        body.localized .proof p { font-size: 15px; }
+        body.localized .section-intro h1 {
+            font-size: 53px;
+            line-height: 1.18;
+            letter-spacing: -1px;
+        }
+        body.localized .section-intro > p { font-size: 22px; line-height: 1.55; }
+        body.localized .problem h3 { font-size: 25px; }
+        body.localized .problem p { font-size: 17px; }
+        body.localized .workflow h2 { font-size: 34px; letter-spacing: -.5px; }
+        body.localized .flow-card h3 { font-size: 23px; }
+        body.localized .flow-card p { font-size: 16px; }
+        body.localized .feature h3 { font-size: 20px; line-height: 1.3; }
+        body.localized .feature p { font-size: 15px; line-height: 1.5; }
+        body.localized .lens-title { font-size: 34px; letter-spacing: -.5px; }
+        body.localized .lens h3 { font-size: 20px; }
+        body.localized .lens p { font-size: 15px; line-height: 1.45; }
+        body.localized .authority h3 { font-size: 23px; }
+        body.localized .authority p { font-size: 15px; }
+        body.localized .cta-hero h1 {
+            font-size: 57px;
+            line-height: 1.22;
+            letter-spacing: -1px;
+        }
+        body.localized .cta-hero p { font-size: 21px; line-height: 1.55; }
+        body.localized .pilot h3 { font-size: 20px; }
+        body.localized .pilot p { font-size: 14px; }
+        body.localized .demo-card h2 { font-size: 43px; letter-spacing: -.5px; }
+        body.localized .demo-card > p { font-size: 20px; line-height: 1.55; }
+        body.localized .trust-line { font-size: 15px; }
+        body.localized .disclaimer { font-size: 13px; line-height: 1.55; }
     </style>
 </head>
 <body>
@@ -573,7 +627,187 @@
     <div class="footer"><span>SAHKARAI&nbsp;&nbsp;|&nbsp;&nbsp;REGULATORY INTELLIGENCE</span><span>04 / 04</span></div>
 </section>
 <script>
-    const page = new URLSearchParams(location.search).get("page") || "1";
+    const params = new URLSearchParams(location.search);
+    const page = params.get("page") || "1";
+    const language = params.get("lang") || "en";
+    const translations = {
+        hi: {
+            ".page[data-page='1'] .audience": "प्रबंध निदेशकों के लिए",
+            ".page[data-page='1'] .hero-copy .eyebrow": "भारतीय सहकारी बैंकों के लिए नियामकीय समझ",
+            ".page[data-page='1'] .hero-copy h1": "परिपत्र से<span>स्पष्ट निर्णय तक।</span>",
+            ".page[data-page='1'] .hero-copy > p": "मूल प्रकाशन सामने रखकर बदलाव समझें, असर परखें और सही सवाल पूछें।",
+            ".page[data-page='1'] .cta strong": "वही परिपत्र चुनिए जो अभी मायने रखता है।",
+            ".page[data-page='1'] .cta small": "SahkarAI की पूरी कार्यप्रणाली देखें।",
+            ".page[data-page='1'] .status": "मूल स्रोत सुरक्षित",
+            ".page[data-page='1'] .pdf-block strong": "नियामकीय परिपत्र",
+            ".page[data-page='1'] .pdf-block small": "मूल दस्तावेज़ / 12 पृष्ठ",
+            ".page[data-page='1'] .interpret-label": "सरल भाषा में विश्लेषण",
+            ".page[data-page='1'] .product-card h2": "क्या बदला - और आपके बैंक को अब किस पर ध्यान देना चाहिए।",
+            ".page[data-page='1'] .takeaway:nth-child(1)": "<b>01</b>दायरा और प्रयोज्यता",
+            ".page[data-page='1'] .takeaway:nth-child(2)": "<b>02</b>मुख्य तिथियाँ और दायित्व",
+            ".page[data-page='1'] .takeaway:nth-child(3)": "<b>03</b>आपकी टीम के लिए सवाल",
+            ".page[data-page='1'] .progress-copy span": "निष्कर्षण पूरा",
+            ".page[data-page='1'] .proof:nth-child(1) strong": "मूल दस्तावेज़ पहले",
+            ".page[data-page='1'] .proof:nth-child(1) p": "स्रोत फ़ाइल और मेटाडेटा हमेशा सामने रहते हैं।",
+            ".page[data-page='1'] .proof:nth-child(2) strong": "चार भाषाओं में",
+            ".page[data-page='1'] .proof:nth-child(2) p": "अंग्रेज़ी, हिंदी, गुजराती और मराठी।",
+            ".page[data-page='1'] .proof:nth-child(3) strong": "हर उत्तर सही संस्करण से जुड़ा",
+            ".page[data-page='1'] .proof:nth-child(3) p": "जवाब चुने हुए प्रकाशन तक सीमित रहते हैं।",
+
+            ".page[data-page='2'] .section-intro .eyebrow": "नेतृत्व की वास्तविकता",
+            ".page[data-page='2'] .section-intro h1": "परिपत्र जारी हो चुका है।<span>अब समय की कीमत है।</span>",
+            ".page[data-page='2'] .section-intro > p": "चुनौती केवल जानकारी पाने की नहीं है। बिखरी और जटिल सामग्री को ऐसी साझा समझ में बदलना है, जिसे टीमें जाँच सकें और जिस पर कार्रवाई हो सके।",
+            ".page[data-page='2'] .problem:nth-child(1) h3": "बिखरी जानकारी",
+            ".page[data-page='2'] .problem:nth-child(1) p": "अलग जारीकर्ता, प्रारूप और तारीखें संदर्भ को टुकड़ों में बाँट देती हैं।",
+            ".page[data-page='2'] .problem:nth-child(2) h3": "जटिल भाषा",
+            ".page[data-page='2'] .problem:nth-child(2) p": "कानूनी और नियामकीय भाषा विभागों के बीच समझ की गति धीमी करती है।",
+            ".page[data-page='2'] .problem:nth-child(3) h3": "अगला कदम अस्पष्ट",
+            ".page[data-page='2'] .problem:nth-child(3) p": "प्रबंधन का पहला सवाल सीधा है: अभी किसकी समीक्षा करनी है?",
+            ".page[data-page='2'] .workflow .eyebrow": "जवाबदेह अध्ययन प्रक्रिया",
+            ".page[data-page='2'] .workflow h2": "खोजें। समझें। पड़ताल करें।",
+            ".page[data-page='2'] .flow-card:nth-child(1) h3": "खोजें",
+            ".page[data-page='2'] .flow-card:nth-child(1) p": "जारीकर्ता, तारीख, प्रकार और प्रयोज्यता के आधार पर संग्रह छाँटें।",
+            ".page[data-page='2'] .flow-card:nth-child(2) h3": "समझें",
+            ".page[data-page='2'] .flow-card:nth-child(2) p": "मूल दस्तावेज़ को संरचित विश्लेषण के साथ पढ़ें।",
+            ".page[data-page='2'] .flow-card:nth-child(3) h3": "पड़ताल करें",
+            ".page[data-page='2'] .flow-card:nth-child(3) p": "उसी संस्करण के आधार पर आगे के सवाल पूछें।",
+            ".page[data-page='2'] .source-row p": "आपके बैंक के काम की सामग्री के लिए एक भरोसेमंद जगह।",
+
+            ".page[data-page='3'] .section-intro .eyebrow": "SahkarAI एक जगह क्या लाता है",
+            ".page[data-page='3'] .section-intro h1": "प्रकाशन से<span>निर्णय तक साफ़ रास्ता।</span>",
+            ".page[data-page='3'] .section-intro > p": "स्रोत को छिपाए बिना नियामकीय पढ़ाई बेहतर बनाएं - और विश्लेषण को पेशेवर सलाह की तरह प्रस्तुत न करें।",
+            ".page[data-page='3'] .feature:nth-child(1) h3": "खोज योग्य नियामकीय संग्रह",
+            ".page[data-page='3'] .feature:nth-child(1) p": "वर्तमान और पुराने प्रकाशन खोजें; मूल दस्तावेज़ बस एक क्लिक दूर।",
+            ".page[data-page='3'] .feature:nth-child(2) h3": "संरचित विश्लेषण",
+            ".page[data-page='3'] .feature:nth-child(2) p": "दायरा, मुख्य तिथियाँ, निष्कर्ष और जरूरी नियामकीय शब्द सामने लाएँ।",
+            ".page[data-page='3'] .feature:nth-child(3) h3": "चार भाषाओं में पहुँच",
+            ".page[data-page='3'] .feature:nth-child(3) p": "अंग्रेज़ी, हिंदी, गुजराती या मराठी में पढ़ें; वैकल्पिक भाषा स्पष्ट दिखे।",
+            ".page[data-page='3'] .feature:nth-child(4) h3": "दस्तावेज़-आधारित AI",
+            ".page[data-page='3'] .feature:nth-child(4) p": "एक निश्चित दस्तावेज़ संस्करण से जुड़ी निजी बातचीत शुरू करें।",
+            ".page[data-page='3'] .feature:nth-child(5) h3": "आपकी पसंद के अपडेट",
+            ".page[data-page='3'] .feature:nth-child(5) p": "अपने संस्थान के लिए सही स्रोत और सूचना की आवृत्ति चुनें।",
+            ".page[data-page='3'] .feature:nth-child(6) h3": "आपके अपने PDF",
+            ".page[data-page='3'] .feature:nth-child(6) p": "आंतरिक या विशेषज्ञ सामग्री को इसी निष्कर्षण प्रक्रिया में लाएँ।",
+            ".page[data-page='3'] .lens-title": "एक उत्पाद। हर नेतृत्व भूमिका के लिए अलग दृष्टि।",
+            ".page[data-page='3'] .lens:nth-child(1) h3": "प्रबंध निदेशक",
+            ".page[data-page='3'] .lens:nth-child(1) p": "क्या बदला, कहाँ ध्यान चाहिए और आगे क्या पूछना है - इसका संक्षिप्त दृश्य।",
+            ".page[data-page='3'] .lens:nth-child(2) h3": "अनुपालन",
+            ".page[data-page='3'] .lens:nth-child(2) p": "तेज़ खोज, स्पष्ट विश्लेषण और मूल प्रकाशन तक पूरी पता लगाने की क्षमता।",
+            ".page[data-page='3'] .lens:nth-child(3) h3": "परिचालन",
+            ".page[data-page='3'] .lens:nth-child(3) p": "नियामकीय समझ को कार्यान्वयन समीक्षा में बदलने के लिए साफ़ भाषा।",
+            ".page[data-page='3'] .authority h3": "अंतिम प्रामाणिकता मूल स्रोत की है।",
+            ".page[data-page='3'] .authority p": "हर प्रविष्टि मूल दस्तावेज़ और उसका मेटाडेटा सुरक्षित रखती है। प्रक्रिया में विफलता हो तो उसे तैयार मार्गदर्शन की तरह नहीं दिखाया जाता।",
+
+            ".page[data-page='4'] .audience": "वरिष्ठ नेतृत्व के लिए प्रदर्शन",
+            ".page[data-page='4'] .cta-hero h1": "हर नियामकीय चर्चा को मूल स्रोत से जोड़ें।",
+            ".page[data-page='4'] .cta-hero p": "अपने बैंक के लिए महत्वपूर्ण एक प्रकाशन से शुरुआत करें। एक ही केंद्रित सत्र में मूल दस्तावेज़, उसका विश्लेषण और उससे निकलने वाले सवाल देखें।",
+            ".page[data-page='4'] .pilot:nth-child(1) h3": "चुनें",
+            ".page[data-page='4'] .pilot:nth-child(1) p": "RBI, Income Tax या GST का एक प्रकाशन लाएँ।",
+            ".page[data-page='4'] .pilot:nth-child(2) h3": "तुलना करें",
+            ".page[data-page='4'] .pilot:nth-child(2) p": "मूल स्रोत और संरचित विश्लेषण साथ पढ़ें।",
+            ".page[data-page='4'] .pilot:nth-child(3) h3": "सवाल पूछें",
+            ".page[data-page='4'] .pilot:nth-child(3) p": "अपनी नेतृत्व टीम के वास्तविक सवाल परखें।",
+            ".page[data-page='4'] .demo-card .eyebrow": "SahkarAI को काम करते देखें",
+            ".page[data-page='4'] .demo-card h2": "परिपत्र से स्पष्ट निर्णय तक।",
+            ".page[data-page='4'] .demo-card > p": "SahkarAI देखने के लिए QR कोड स्कैन करें या नीचे दिया पता खोलें। आपके संस्थान के मौजूदा एजेंडा का वास्तविक परिपत्र इस प्रदर्शन को सबसे उपयोगी बनाता है।",
+            ".page[data-page='4'] .url-box strong": "खोलें",
+            ".page[data-page='4'] .qr-caption": "स्कैन करके खोलें",
+            ".page[data-page='4'] .trust-line": "मूल स्रोत पहले&nbsp;&nbsp;/&nbsp;&nbsp;बहुभाषी&nbsp;&nbsp;/&nbsp;&nbsp;संस्करण से बंधा",
+            ".page[data-page='4'] .disclaimer": "SahkarAI नियामकीय जानकारी को समझने में सहायता देता है। यह कानूनी, कर, अनुपालन या अन्य पेशेवर सलाह का विकल्प नहीं है। किसी भी कार्रवाई से पहले संस्था को मूल प्रकाशन से सत्यापन करना चाहिए।"
+        },
+        mr: {
+            ".page[data-page='1'] .audience": "व्यवस्थापकीय संचालकांसाठी",
+            ".page[data-page='1'] .hero-copy .eyebrow": "भारतीय सहकारी बँकांसाठी नियामक आकलन",
+            ".page[data-page='1'] .hero-copy h1": "परिपत्रकापासून<span>निर्णयाच्या स्पष्टतेपर्यंत.</span>",
+            ".page[data-page='1'] .hero-copy > p": "मूळ प्रकाशन समोर ठेवून बदल समजा, परिणाम तपासा आणि नेमके प्रश्न विचारा.",
+            ".page[data-page='1'] .cta strong": "आत्ता महत्त्वाचे असलेले एक परिपत्रक निवडा.",
+            ".page[data-page='1'] .cta small": "SahkarAI चा संपूर्ण कार्यप्रवाह पाहा.",
+            ".page[data-page='1'] .status": "मूळ स्रोत सुरक्षित",
+            ".page[data-page='1'] .pdf-block strong": "नियामक परिपत्रक",
+            ".page[data-page='1'] .pdf-block small": "मूळ दस्तऐवज / 12 पाने",
+            ".page[data-page='1'] .interpret-label": "सोप्या भाषेतील विश्लेषण",
+            ".page[data-page='1'] .product-card h2": "काय बदलले - आणि आपल्या बँकेने आता कशाचा आढावा घ्यावा.",
+            ".page[data-page='1'] .takeaway:nth-child(1)": "<b>01</b>व्याप्ती आणि लागूता",
+            ".page[data-page='1'] .takeaway:nth-child(2)": "<b>02</b>महत्त्वाच्या तारखा आणि जबाबदाऱ्या",
+            ".page[data-page='1'] .takeaway:nth-child(3)": "<b>03</b>आपल्या टीमसाठी प्रश्न",
+            ".page[data-page='1'] .progress-copy span": "मजकूर निष्कर्षण पूर्ण",
+            ".page[data-page='1'] .proof:nth-child(1) strong": "मूळ दस्तऐवज प्रथम",
+            ".page[data-page='1'] .proof:nth-child(1) p": "स्रोत फाइल आणि मेटाडेटा नेहमी दिसते.",
+            ".page[data-page='1'] .proof:nth-child(2) strong": "चार भाषांमध्ये",
+            ".page[data-page='1'] .proof:nth-child(2) p": "इंग्रजी, हिंदी, गुजराती आणि मराठी.",
+            ".page[data-page='1'] .proof:nth-child(3) strong": "प्रत्येक उत्तर योग्य आवृत्तीशी जोडलेले",
+            ".page[data-page='1'] .proof:nth-child(3) p": "उत्तरे निवडलेल्या प्रकाशनापुरती मर्यादित राहतात.",
+
+            ".page[data-page='2'] .section-intro .eyebrow": "नेतृत्वासमोरील वास्तव",
+            ".page[data-page='2'] .section-intro h1": "परिपत्रक प्रसिद्ध झाले.<span>आता प्रत्येक क्षण महत्त्वाचा.</span>",
+            ".page[data-page='2'] .section-intro > p": "आव्हान केवळ माहिती मिळवण्याचे नाही. विखुरलेल्या आणि क्लिष्ट मजकुराचे अशा सामायिक आकलनात रूपांतर करायचे आहे, जे टीम तपासू शकेल आणि ज्यावर कृती करता येईल.",
+            ".page[data-page='2'] .problem:nth-child(1) h3": "विखुरलेली माहिती",
+            ".page[data-page='2'] .problem:nth-child(1) p": "वेगवेगळे जारीकर्ते, स्वरूप आणि तारखा यामुळे संदर्भ तुकड्यांत विभागला जातो.",
+            ".page[data-page='2'] .problem:nth-child(2) h3": "क्लिष्ट भाषा",
+            ".page[data-page='2'] .problem:nth-child(2) p": "कायदेशीर आणि नियामक भाषा विभागांमधील समज मंदावते.",
+            ".page[data-page='2'] .problem:nth-child(3) h3": "पुढचे पाऊल अस्पष्ट",
+            ".page[data-page='2'] .problem:nth-child(3) p": "व्यवस्थापनाचा पहिला प्रश्न सोपा असतो: आत्ता कशाचा आढावा घ्यायचा?",
+            ".page[data-page='2'] .workflow .eyebrow": "शिस्तबद्ध वाचन प्रक्रिया",
+            ".page[data-page='2'] .workflow h2": "शोधा. समजून घ्या. पडताळा.",
+            ".page[data-page='2'] .flow-card:nth-child(1) h3": "शोधा",
+            ".page[data-page='2'] .flow-card:nth-child(1) p": "जारीकर्ता, तारीख, प्रकार आणि लागूतेनुसार संग्रह गाळा.",
+            ".page[data-page='2'] .flow-card:nth-child(2) h3": "समजून घ्या",
+            ".page[data-page='2'] .flow-card:nth-child(2) p": "मूळ दस्तऐवज संरचित विश्लेषणासोबत वाचा.",
+            ".page[data-page='2'] .flow-card:nth-child(3) h3": "पडताळा",
+            ".page[data-page='2'] .flow-card:nth-child(3) p": "त्याच आवृत्तीच्या आधारावर पुढचे प्रश्न विचारा.",
+            ".page[data-page='2'] .source-row p": "आपल्या बँकेच्या कामाच्या माहितीसाठी एक विश्वासार्ह ठिकाण.",
+
+            ".page[data-page='3'] .section-intro .eyebrow": "SahkarAI एका ठिकाणी काय आणते",
+            ".page[data-page='3'] .section-intro h1": "प्रकाशनापासून<span>निर्णयापर्यंत स्पष्ट मार्ग.</span>",
+            ".page[data-page='3'] .section-intro > p": "स्रोत न लपवता नियामक वाचन अधिक उपयुक्त करा - आणि विश्लेषणाला व्यावसायिक सल्ला म्हणून मांडू नका.",
+            ".page[data-page='3'] .feature:nth-child(1) h3": "शोधता येणारा नियामक संग्रह",
+            ".page[data-page='3'] .feature:nth-child(1) p": "नवीन आणि जुनी प्रकाशने शोधा; मूळ दस्तऐवज एका क्लिकवर.",
+            ".page[data-page='3'] .feature:nth-child(2) h3": "संरचित विश्लेषण",
+            ".page[data-page='3'] .feature:nth-child(2) p": "व्याप्ती, महत्त्वाच्या तारखा, निष्कर्ष आणि उपयुक्त नियामक संज्ञा समोर आणा.",
+            ".page[data-page='3'] .feature:nth-child(3) h3": "चार भाषांत प्रवेश",
+            ".page[data-page='3'] .feature:nth-child(3) p": "इंग्रजी, हिंदी, गुजराती किंवा मराठीत वाचा; पर्यायी भाषा स्पष्ट दिसते.",
+            ".page[data-page='3'] .feature:nth-child(4) h3": "दस्तऐवज-आधारित AI",
+            ".page[data-page='3'] .feature:nth-child(4) p": "एका निश्चित दस्तऐवज आवृत्तीशी जोडलेला खाजगी संवाद सुरू करा.",
+            ".page[data-page='3'] .feature:nth-child(5) h3": "आपल्या पसंतीनुसार अपडेट्स",
+            ".page[data-page='3'] .feature:nth-child(5) p": "आपल्या संस्थेला योग्य स्रोत आणि सूचना मिळण्याची वारंवारता निवडा.",
+            ".page[data-page='3'] .feature:nth-child(6) h3": "आपले स्वतःचे PDF",
+            ".page[data-page='3'] .feature:nth-child(6) p": "अंतर्गत किंवा तज्ज्ञ मजकूर याच निष्कर्षण प्रक्रियेत आणा.",
+            ".page[data-page='3'] .lens-title": "एक उत्पादन. नेतृत्वाच्या प्रत्येक भूमिकेसाठी वेगळी दृष्टी.",
+            ".page[data-page='3'] .lens:nth-child(1) h3": "व्यवस्थापकीय संचालक",
+            ".page[data-page='3'] .lens:nth-child(1) p": "काय बदलले, कुठे लक्ष द्यायचे आणि पुढे काय विचारायचे - याचे संक्षिप्त चित्र.",
+            ".page[data-page='3'] .lens:nth-child(2) h3": "अनुपालन",
+            ".page[data-page='3'] .lens:nth-child(2) p": "जलद शोध, स्पष्ट विश्लेषण आणि मूळ प्रकाशनापर्यंत संपूर्ण मागोवा.",
+            ".page[data-page='3'] .lens:nth-child(3) h3": "कामकाज",
+            ".page[data-page='3'] .lens:nth-child(3) p": "नियामक आकलनाचे अंमलबजावणी आढाव्यात रूपांतर करण्यासाठी स्पष्ट भाषा.",
+            ".page[data-page='3'] .authority h3": "अंतिम प्रामाणिकता मूळ स्रोताचीच.",
+            ".page[data-page='3'] .authority p": "प्रत्येक नोंद मूळ दस्तऐवज आणि त्याचा मेटाडेटा जतन करते. प्रक्रियेत अपयश आल्यास ते तयार मार्गदर्शन म्हणून दाखवले जात नाही.",
+
+            ".page[data-page='4'] .audience": "वरिष्ठ नेतृत्वासाठी प्रात्यक्षिक",
+            ".page[data-page='4'] .cta-hero h1": "प्रत्येक नियामक चर्चेला मूळ स्रोताशी जोडा.",
+            ".page[data-page='4'] .cta-hero p": "आपल्या बँकेसाठी महत्त्वाच्या एका प्रकाशनापासून सुरुवात करा. एका केंद्रित सत्रात मूळ दस्तऐवज, त्याचे विश्लेषण आणि त्यातून पुढे येणारे प्रश्न पाहा.",
+            ".page[data-page='4'] .pilot:nth-child(1) h3": "निवडा",
+            ".page[data-page='4'] .pilot:nth-child(1) p": "RBI, Income Tax किंवा GST चे एक प्रकाशन आणा.",
+            ".page[data-page='4'] .pilot:nth-child(2) h3": "तुलना करा",
+            ".page[data-page='4'] .pilot:nth-child(2) p": "मूळ स्रोत आणि संरचित विश्लेषण सोबत वाचा.",
+            ".page[data-page='4'] .pilot:nth-child(3) h3": "प्रश्न विचारा",
+            ".page[data-page='4'] .pilot:nth-child(3) p": "आपल्या नेतृत्व टीमचे खरे प्रश्न तपासा.",
+            ".page[data-page='4'] .demo-card .eyebrow": "SahkarAI प्रत्यक्ष काम करताना पाहा",
+            ".page[data-page='4'] .demo-card h2": "परिपत्रकापासून निर्णयाच्या स्पष्टतेपर्यंत.",
+            ".page[data-page='4'] .demo-card > p": "SahkarAI पाहण्यासाठी QR कोड स्कॅन करा किंवा खालील पत्ता उघडा. आपल्या संस्थेच्या सध्याच्या अजेंड्यातील खरे परिपत्रक हे प्रात्यक्षिक सर्वाधिक उपयुक्त बनवते.",
+            ".page[data-page='4'] .url-box strong": "उघडा",
+            ".page[data-page='4'] .qr-caption": "स्कॅन करून उघडा",
+            ".page[data-page='4'] .trust-line": "मूळ स्रोत प्रथम&nbsp;&nbsp;/&nbsp;&nbsp;बहुभाषिक&nbsp;&nbsp;/&nbsp;&nbsp;आवृत्तीशी जोडलेले",
+            ".page[data-page='4'] .disclaimer": "SahkarAI नियामक माहिती समजून घेण्यास मदत करते. हा कायदेशीर, कर, अनुपालन किंवा इतर व्यावसायिक सल्ल्याचा पर्याय नाही. कोणतीही कृती करण्यापूर्वी संस्थेने मूळ प्रकाशनातून पडताळणी करावी."
+        }
+    };
+    if (translations[language]) {
+        document.documentElement.lang = language;
+        document.body.classList.add("localized", `localized-${language}`);
+        for (const [selector, content] of Object.entries(translations[language])) {
+            const element = document.querySelector(selector);
+            if (element) element.innerHTML = content;
+        }
+    }
     document.querySelector(`[data-page="${page}"]`).classList.add("active");
 </script>
 </body>
