@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ "${CONFIRM_RESTORE:-}" != "{{ app_name }}-{{ postgres_database }}" ]]; then
+  echo "Set CONFIRM_RESTORE={{ app_name }}-{{ postgres_database }} before restoring." >&2
+  exit 2
+fi
+
+source "/etc/{{ app_name }}/backup.env"
+
+snapshot="${1:-latest}"
+target="$(mktemp -d)"
+trap 'rm -rf "$target"' EXIT
+
+restic restore "$snapshot" \
+  --target="$target" \
+  --include="{{ backup_working_directory }}/postgres.dump"
+
+dump="$target{{ backup_working_directory }}/postgres.dump"
+test -s "$dump"
+
+docker exec -i \
+  -e PGPASSWORD="$POSTGRES_PASSWORD" \
+  "{{ postgres_container }}" \
+  pg_restore \
+    --username="{{ postgres_username }}" \
+    --dbname="{{ postgres_database }}" \
+    --clean \
+    --if-exists \
+  < "$dump"

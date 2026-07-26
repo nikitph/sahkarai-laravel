@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+output_dir="$root/output/deployment"
+workspace="$(mktemp -d)"
+kit="$workspace/laravel-deployment-kit"
+
+cleanup() {
+  rm -rf "$workspace"
+}
+trap cleanup EXIT
+
+mkdir -p \
+  "$kit/payload/.github/workflows" \
+  "$kit/payload/config" \
+  "$kit/payload/docs" \
+  "$kit/payload/ops" \
+  "$output_dir"
+
+cp -R "$root/infra" "$kit/payload/infra"
+cp "$root/.github/workflows/deploy-production.yml" "$kit/payload/.github/workflows/"
+cp "$root/.github/workflows/infrastructure-review.yml" "$kit/payload/.github/workflows/"
+cp "$root/config/deploy.yml" "$kit/payload/config/"
+cp "$root/config/deploy.reverb.yml" "$kit/payload/config/"
+cp "$root/docs/DEPLOYMENT-AUTOMATION.md" "$kit/payload/docs/"
+cp "$root/deployment-kit/ONBOARDING.md" "$kit/payload/docs/"
+cp "$root/deployment-kit/verify.example.yml" "$kit/payload/docs/"
+cp "$root/deployment-kit/install" "$kit/install"
+
+for command in \
+  bootstrap-production \
+  render-ansible-inventory \
+  rollback-production \
+  verify-production
+do
+  cp "$root/ops/$command" "$kit/payload/ops/"
+done
+
+find "$kit" -type d -name .terraform -prune -exec rm -rf {} +
+find "$kit" -type f \
+  \( -name 'terraform.tfstate*' -o -name 'inventory.yml' -o -name '*.tfplan' \) \
+  -delete
+
+while IFS= read -r -d '' file; do
+  perl -0pi -e '
+    s/sahkarai-laravel/__APP_SLUG__/g;
+    s/nikitph/__GITHUB_OWNER__/g;
+    s/SahkarAI/__APP_DISPLAY_NAME__/g;
+    s/sahkarai/__APP_SLUG__/g;
+  ' "$file"
+done < <(find "$kit" -type f -print0)
+
+chmod +x "$kit/install" "$kit/payload"/ops/*
+
+archive="$output_dir/laravel-deployment-kit.tar.gz"
+tar -C "$workspace" -czf "$archive" laravel-deployment-kit
+
+printf '%s\n' "$archive"

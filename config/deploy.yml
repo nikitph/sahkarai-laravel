@@ -1,6 +1,7 @@
 # Kamal deploy for the SahkarAI production application.
 # Deploys the ALREADY-PUBLISHED multi-arch image from GHCR (no build here).
 service: sahkarai-laravel
+minimum_version: 2.6.1
 # Runtime >=0.2.0-dev ships HEALTHCHECK NONE, so non-web roles need no workaround.
 image: nikitph/sahkarai-laravel
 
@@ -17,7 +18,7 @@ builder:
 servers:
   web:
     hosts:
-      - 168.144.27.66
+      - <%= ENV.fetch("DEPLOY_HOST") %>
     # Only the web role migrates. Kamal boots the primary web role to healthy
     # before any other role, so the schema exists before workers start — no
     # pre-deploy hook, no crash-looping workers.
@@ -30,12 +31,12 @@ servers:
         AUTORUN_LARAVEL_MIGRATION_ISOLATION: "true"
   worker:
     hosts:
-      - 168.144.27.66
+      - <%= ENV.fetch("DEPLOY_HOST") %>
     cmd: php artisan queue:work --tries=3 --sleep=1 --timeout=180 --max-time=3600
     proxy: false
   scheduler:
     hosts:
-      - 168.144.27.66
+      - <%= ENV.fetch("DEPLOY_HOST") %>
     cmd: php artisan schedule:work
     proxy: false
 
@@ -43,7 +44,7 @@ servers:
 # THE question this test exists to answer: does SSE survive this proxy?
 proxy:
   ssl: true
-  host: app.168.144.27.66.sslip.io
+  host: <%= ENV.fetch("APP_HOST") %>
   app_port: 8080
   healthcheck:
     path: /up
@@ -54,7 +55,7 @@ env:
   clear:
     APP_ENV: production
     APP_DEBUG: "false"
-    APP_URL: https://app.168.144.27.66.sslip.io
+    APP_URL: https://<%= ENV.fetch("APP_HOST") %>
     AUTO_VERIFY_EMAIL: "true"
     LOG_CHANNEL: stderr
     LOG_STACK: stderr
@@ -69,21 +70,26 @@ env:
     SESSION_DRIVER: database
     QUEUE_CONNECTION: redis
     CACHE_STORE: redis
+    REGULATORY_STORAGE_DISK: <%= ENV.fetch("REGULATORY_STORAGE_DISK", "local") %>
+    AWS_DEFAULT_REGION: "<%= ENV.fetch("SPACES_REGION", "blr1") %>"
+    AWS_BUCKET: "<%= ENV.fetch("SPACES_BUCKET_NAME", "") %>"
+    AWS_ENDPOINT: "<%= ENV.fetch("SPACES_ENDPOINT", "") %>"
+    AWS_USE_PATH_STYLE_ENDPOINT: "false"
     REDIS_CLIENT: phpredis
     REDIS_HOST: sahkarai-laravel-redis
     REDIS_PORT: "6379"
     REDIS_QUEUE_RETRY_AFTER: "240"
 
-    REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://app.168.144.27.66.sslip.io)"
+    REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://<%= ENV.fetch("APP_HOST") %>)"
     INCOME_TAX_FEED_URL: https://wmstatic-prd.incometaxindia.gov.in/circular-rss-feed/-/asset_publisher/bxhj/rss
 
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
     REVERB_APP_KEY: conformancekey
-    REVERB_HOST: ws.168.144.27.66.sslip.io   # via kamal-proxy
+    REVERB_HOST: <%= ENV.fetch("DEPLOY_REVERB_HOST") %>   # via kamal-proxy
     REVERB_PORT: "443"
     REVERB_SCHEME: https
-    REVERB_PUBLIC_HOST: ws.168.144.27.66.sslip.io
+    REVERB_PUBLIC_HOST: <%= ENV.fetch("DEPLOY_REVERB_HOST") %>
     REVERB_PUBLIC_PORT: "443"
     REVERB_PUBLIC_SCHEME: https
 
@@ -100,6 +106,10 @@ env:
     - RAZORPAY_TIER_1_PLAN_ID
     - RAZORPAY_TIER_2_PLAN_ID
     - RAZORPAY_TIER_3_PLAN_ID
+<% if ENV.fetch("REGULATORY_STORAGE_DISK", "local") == "s3" %>
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+<% end %>
 
 # Immutable regulatory originals must outlive image/container replacement. Web
 # serves downloads while workers acquire/extract, so every app role mounts the
@@ -110,7 +120,7 @@ volumes:
 accessories:
   postgres:
     image: postgres:17-alpine
-    host: 168.144.27.66
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
     env:
       clear:
         POSTGRES_DB: app
@@ -121,12 +131,12 @@ accessories:
       - data:/var/lib/postgresql/data
   redis:
     image: redis:7-alpine
-    host: 168.144.27.66
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
     cmd: redis-server --appendonly yes
     directories:
       - data:/data
 
 ssh:
-  user: root
+  user: <%= ENV.fetch("DEPLOY_USER", "deploy") %>
   keys:
     - ~/.ssh/sahkarai_laravel_deploy

@@ -15,14 +15,230 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  classify:
     if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      infrastructure: ${{ steps.changes.outputs.infrastructure }}
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Classify the merged change
+        id: changes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          base="$(git rev-parse HEAD^ 2>/dev/null || git hash-object -t tree /dev/null)"
+          if git diff --name-only "$base" HEAD | grep -Eq '^infra/'; then
+            echo 'infrastructure=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'infrastructure=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  infrastructure-plan:
+    needs: classify
+    if: needs.classify.outputs.infrastructure == 'true'
+    runs-on: ubuntu-latest
+    environment: production-infrastructure-plan
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TOFU_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TOFU_STATE_SECRET_ACCESS_KEY }}
+      TF_VAR_ssh_key_fingerprints: ${{ secrets.DO_SSH_KEY_FINGERPRINTS_JSON }}
+      TF_VAR_ssh_allowed_cidrs: ${{ secrets.DO_SSH_ALLOWED_CIDRS_JSON }}
+      TF_VAR_spaces_bucket_name: ${{ vars.SPACES_BUCKET_NAME }}
+      TF_VAR_create_spaces_bucket: ${{ vars.CREATE_SPACES_BUCKET || 'false' }}
+
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: 1.10.6
+          tofu_wrapper: false
+
+      - name: Initialize remote infrastructure state
+        working-directory: infra/tofu
+        run: |
+          tofu init -input=false \
+            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TOFU_STATE_KEY || 'sahkarai/production/tofu.tfstate' }}" \
+            -backend-config="region=${{ vars.TOFU_STATE_REGION || 'blr1' }}" \
+            -backend-config="endpoints.s3=https://${{ vars.TOFU_STATE_REGION || 'blr1' }}.digitaloceanspaces.com" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_requesting_account_id=true" \
+            -backend-config="skip_metadata_api_check=true" \
+            -backend-config="use_path_style=false" \
+            -backend-config="encrypt=true"
+
+      - name: Build the immutable production plan
+        working-directory: infra/tofu
+        run: |
+          tofu plan -input=false -no-color -out=production.tfplan
+          {
+            echo '## OpenTofu production plan'
+            echo '```text'
+            tofu show -no-color production.tfplan
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve the exact production plan
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: production-tofu-plan-${{ github.event.workflow_run.head_sha }}
+          path: infra/tofu/production.tfplan
+          if-no-files-found: error
+          retention-days: 1
+
+  infrastructure:
+    needs: [classify, infrastructure-plan]
+    if: >-
+      always()
+      && needs.classify.outputs.infrastructure == 'true'
+      && needs.infrastructure-plan.result == 'success'
+    runs-on: ubuntu-latest
+    environment: production-infrastructure
+    outputs:
+      deployment_host: ${{ steps.outputs.outputs.deployment_host }}
+      app_host: ${{ steps.outputs.outputs.app_host }}
+      reverb_host: ${{ steps.outputs.outputs.reverb_host }}
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TOFU_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TOFU_STATE_SECRET_ACCESS_KEY }}
+      TF_VAR_ssh_key_fingerprints: ${{ secrets.DO_SSH_KEY_FINGERPRINTS_JSON }}
+      TF_VAR_ssh_allowed_cidrs: ${{ secrets.DO_SSH_ALLOWED_CIDRS_JSON }}
+      TF_VAR_spaces_bucket_name: ${{ vars.SPACES_BUCKET_NAME }}
+      TF_VAR_create_spaces_bucket: ${{ vars.CREATE_SPACES_BUCKET || 'false' }}
+
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
+        with:
+          tofu_version: 1.10.6
+          tofu_wrapper: false
+
+      - name: Initialize remote infrastructure state
+        working-directory: infra/tofu
+        run: |
+          tofu init -input=false \
+            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TOFU_STATE_KEY || 'sahkarai/production/tofu.tfstate' }}" \
+            -backend-config="region=${{ vars.TOFU_STATE_REGION || 'blr1' }}" \
+            -backend-config="endpoints.s3=https://${{ vars.TOFU_STATE_REGION || 'blr1' }}.digitaloceanspaces.com" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_requesting_account_id=true" \
+            -backend-config="skip_metadata_api_check=true" \
+            -backend-config="use_path_style=false" \
+            -backend-config="encrypt=true"
+
+      - name: Retrieve the approved production plan
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: production-tofu-plan-${{ github.event.workflow_run.head_sha }}
+          path: infra/tofu
+
+      - name: Apply the approved production plan
+        working-directory: infra/tofu
+        run: tofu apply -input=false -auto-approve production.tfplan
+
+      - name: Export infrastructure outputs
+        id: outputs
+        working-directory: infra/tofu
+        run: |
+          {
+            echo "deployment_host=$(tofu output -raw deployment_host)"
+            echo "app_host=$(tofu output -raw app_host)"
+            echo "reverb_host=$(tofu output -raw reverb_host)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --disable-pip-version-check ansible-core==2.18.6
+          ansible-galaxy install -r infra/ansible/requirements.yml
+
+      - name: Install infrastructure SSH key
+        env:
+          INFRA_SSH_PRIVATE_KEY: ${{ secrets.INFRA_SSH_PRIVATE_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$INFRA_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_infra
+          chmod 600 ~/.ssh/sahkarai_infra
+          for attempt in {1..30}; do
+            if ssh-keyscan -T 5 -H "${{ steps.outputs.outputs.deployment_host }}" \
+              > ~/.ssh/known_hosts 2>/dev/null; then
+              exit 0
+            fi
+            echo "Waiting for SSH (attempt $attempt/30)..."
+            sleep 5
+          done
+          echo "The host did not expose SSH within the expected window." >&2
+          exit 1
+
+      - name: Render the Ansible inventory
+        run: |
+          chmod +x ops/render-ansible-inventory
+          ops/render-ansible-inventory
+
+      - name: Configure the host idempotently
+        env:
+          ANSIBLE_CONFIG: ${{ github.workspace }}/infra/ansible/ansible.cfg
+          ANSIBLE_PRIVATE_KEY_FILE: ${{ env.HOME }}/.ssh/sahkarai_infra
+          DEPLOY_SSH_PUBLIC_KEY: ${{ secrets.DEPLOY_SSH_PUBLIC_KEY }}
+          ANSIBLE_EXTRA_VARS: >-
+            backup_enabled=${{ vars.BACKUP_ENABLED || 'false' }}
+            backup_restic_repository=${{ secrets.BACKUP_RESTIC_REPOSITORY }}
+            backup_restic_password=${{ secrets.BACKUP_RESTIC_PASSWORD }}
+            backup_s3_access_key=${{ secrets.BACKUP_S3_ACCESS_KEY }}
+            backup_s3_secret_key=${{ secrets.BACKUP_S3_SECRET_KEY }}
+            postgres_password=${{ secrets.POSTGRES_PASSWORD }}
+        run: ansible-playbook infra/ansible/site.yml --extra-vars "$ANSIBLE_EXTRA_VARS"
+
+  deploy:
+    needs: [classify, infrastructure]
+    if: >-
+      always()
+      && needs.classify.result == 'success'
+      && (
+        needs.classify.outputs.infrastructure == 'false'
+        || needs.infrastructure.result == 'success'
+      )
     runs-on: ubuntu-latest
     environment: production
     env:
       VERSION: ${{ github.event.workflow_run.head_sha }}
       IMAGE: ghcr.io/nikitph/sahkarai-laravel
       REVERB_IMAGE: ghcr.io/nikitph/sahkarai-laravel-reverb
+      DEPLOY_HOST: ${{ needs.infrastructure.outputs.deployment_host || vars.DEPLOY_HOST }}
+      APP_HOST: ${{ needs.infrastructure.outputs.app_host || vars.APP_HOST }}
+      DEPLOY_REVERB_HOST: ${{ needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+      REGULATORY_STORAGE_DISK: ${{ vars.REGULATORY_STORAGE_DISK || 'local' }}
+      SPACES_REGION: ${{ vars.SPACES_REGION || 'blr1' }}
+      SPACES_BUCKET_NAME: ${{ vars.SPACES_BUCKET_NAME }}
+      SPACES_ENDPOINT: ${{ vars.SPACES_ENDPOINT }}
       KAMAL_REGISTRY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
       APP_KEY: ${{ secrets.APP_KEY }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -35,6 +251,8 @@ jobs:
       RAZORPAY_TIER_1_PLAN_ID: ${{ secrets.RAZORPAY_TIER_1_PLAN_ID }}
       RAZORPAY_TIER_2_PLAN_ID: ${{ secrets.RAZORPAY_TIER_2_PLAN_ID }}
       RAZORPAY_TIER_3_PLAN_ID: ${{ secrets.RAZORPAY_TIER_3_PLAN_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
 
     steps:
       - name: Check out the verified revision
@@ -42,6 +260,12 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
+
+      - name: Validate deployment coordinates
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$APP_HOST"
+          test -n "$DEPLOY_REVERB_HOST"
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
@@ -66,6 +290,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and publish immutable Reverb image
+        if: vars.REVERB_ENABLED != 'false'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -81,6 +306,7 @@ jobs:
         uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
         with:
           ruby-version: '3.3'
+
       - run: gem install kamal --version 2.6.1 --no-document
 
       - name: Install production SSH key
@@ -90,11 +316,12 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_laravel_deploy
           chmod 600 ~/.ssh/sahkarai_laravel_deploy
-          printf '%s\n' '168.144.27.66 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJMWP2XgBuegTDZcEQAS01ALXhlF/dys5v1p7MQKzL5/' > ~/.ssh/known_hosts
+          ssh-keyscan -H "$DEPLOY_HOST" > ~/.ssh/known_hosts
 
       - name: Map GitHub secrets into Kamal
         run: |
           mkdir -p .kamal
+          # shellcheck disable=SC2016
           printf '%s\n' \
             'KAMAL_REGISTRY_PASSWORD=$KAMAL_REGISTRY_PASSWORD' \
             'APP_KEY=$APP_KEY' \
@@ -108,12 +335,59 @@ jobs:
             'RAZORPAY_TIER_1_PLAN_ID=$RAZORPAY_TIER_1_PLAN_ID' \
             'RAZORPAY_TIER_2_PLAN_ID=$RAZORPAY_TIER_2_PLAN_ID' \
             'RAZORPAY_TIER_3_PLAN_ID=$RAZORPAY_TIER_3_PLAN_ID' \
+            'AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID' \
+            'AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY' \
             > .kamal/secrets
 
-      - name: Roll out verified revision
+      - name: Capture the currently active version
+        id: previous
         run: |
-          kamal deploy --version="$VERSION" --skip-push
-          kamal deploy -c config/deploy.reverb.yml --version="$VERSION" --skip-push
+          image="$(
+            ssh -i ~/.ssh/sahkarai_laravel_deploy \
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "docker ps --filter label=service=sahkarai-laravel --format '{{.Image}}' | head -n 1"
+          )"
+          echo "version=${image##*:}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify public health endpoint
-        run: curl --fail --retry 8 --retry-delay 3 --retry-all-errors https://app.168.144.27.66.sslip.io/up
+      - name: Back up PostgreSQL before migrations
+        if: vars.BACKUP_ENABLED == 'true' && steps.previous.outputs.version != ''
+        run: |
+          ssh -i ~/.ssh/sahkarai_laravel_deploy \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo /usr/local/sbin/sahkarai-backup-postgres"
+
+      - name: Boot durable accessories on a new host
+        run: |
+          if ! ssh -i ~/.ssh/sahkarai_laravel_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
+            "docker ps -a --format '{{.Names}}' | grep -qx sahkarai-laravel-postgres"; then
+            kamal accessory boot postgres
+          fi
+          if ! ssh -i ~/.ssh/sahkarai_laravel_deploy "$DEPLOY_USER@$DEPLOY_HOST" \
+            "docker ps -a --format '{{.Names}}' | grep -qx sahkarai-laravel-redis"; then
+            kamal accessory boot redis
+          fi
+
+      - name: Roll out the verified revision
+        id: rollout
+        run: kamal deploy --version="$VERSION" --skip-push
+
+      - name: Roll out the verified Reverb revision
+        if: vars.REVERB_ENABLED != 'false'
+        run: kamal deploy -c config/deploy.reverb.yml --version="$VERSION" --skip-push
+
+      - name: Verify production fidelity
+        id: fidelity
+        env:
+          APP_URL: https://${{ env.APP_HOST }}
+          REVERB_URL: https://${{ env.DEPLOY_REVERB_HOST }}
+        run: |
+          chmod +x ops/verify-production
+          ops/verify-production
+
+      - name: Roll back after a failed fidelity check
+        if: failure() && steps.rollout.outcome == 'success' && steps.previous.outputs.version != ''
+        run: |
+          kamal rollback "${{ steps.previous.outputs.version }}"
+          if [[ "${{ vars.REVERB_ENABLED }}" != 'false' ]]; then
+            kamal rollback -c config/deploy.reverb.yml "${{ steps.previous.outputs.version }}"
+          fi

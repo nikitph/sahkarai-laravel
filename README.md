@@ -76,6 +76,11 @@ The specs mention Supabase sessions, dormant TOTP, and database RLS. This applic
 
 The Dockerfile produces one immutable image without Node, development dependencies, or `.env`. Kamal runs the same image as web, worker, scheduler, and Reverb roles. The existing DigitalOcean configuration is under `config/deploy.yml` and `config/deploy.reverb.yml`.
 
+OpenTofu provisions DigitalOcean, Ansible configures the Docker host, and a
+verified merge to `main` drives the protected production workflow. Read
+[Reproducible production deployment](docs/DEPLOYMENT-AUTOMATION.md) before
+changing infrastructure, deployment secrets, storage, or recovery behavior.
+
 ```bash
 kamal accessory boot redis
 kamal deploy --version=<version> --skip-push

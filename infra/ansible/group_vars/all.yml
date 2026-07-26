@@ -1,0 +1,27 @@
+---
+app_name: sahkarai
+service_name: sahkarai-laravel
+deploy_user: deploy
+server_timezone: UTC
+
+docker_edition: ce
+docker_install_compose_plugin: true
+docker_users:
+  - "{{ deploy_user }}"
+
+host_packages:
+  - ca-certificates
+  - curl
+  - fail2ban
+  - git
+  - jq
+  - restic
+  - unattended-upgrades
+  - ufw
+
+backup_enabled: false
+backup_schedule: "*-*-* 02:30:00 UTC"
+backup_working_directory: "/var/lib/{{ app_name }}-backups"
+postgres_container: "{{ service_name }}-postgres"
+postgres_database: app
+postgres_username: app

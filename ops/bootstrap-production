@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tofu_dir="$root/infra/tofu"
+ansible_dir="$root/infra/ansible"
+
+if [[ "${1:-}" != "--apply" ]]; then
+  tofu -chdir="$tofu_dir" init
+  tofu -chdir="$tofu_dir" plan
+  echo
+  echo "Review the plan, then rerun with --apply to provision and configure production."
+  exit 0
+fi
+
+: "${DEPLOY_SSH_PUBLIC_KEY:?DEPLOY_SSH_PUBLIC_KEY is required}"
+
+tofu -chdir="$tofu_dir" init
+tofu -chdir="$tofu_dir" apply
+"$root/ops/render-ansible-inventory" >/dev/null
+
+ansible-galaxy install -r "$ansible_dir/requirements.yml"
+ANSIBLE_CONFIG="$ansible_dir/ansible.cfg" \
+  ansible-playbook "$ansible_dir/site.yml"
+
+deployment_host="$(tofu -chdir="$tofu_dir" output -raw deployment_host)"
+app_host="$(tofu -chdir="$tofu_dir" output -raw app_host)"
+reverb_host="$(tofu -chdir="$tofu_dir" output -raw reverb_host)"
+
+cat <<EOF
+Infrastructure is ready.
+
+GitHub production variables:
+  DEPLOY_HOST=$deployment_host
+  APP_HOST=$app_host
+  DEPLOY_REVERB_HOST=$reverb_host
+  DEPLOY_USER=deploy
+EOF

@@ -1,0 +1,10 @@
+[Unit]
+Description=Schedule {{ app_name }} PostgreSQL backups
+
+[Timer]
+OnCalendar={{ backup_schedule }}
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target

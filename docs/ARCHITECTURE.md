@@ -57,3 +57,14 @@ One immutable image runs four roles with different commands:
 - reverb: WebSocket transport
 
 PostgreSQL stores application state; Redis backs queues/cache. The frozen multi-arch runtime is `ghcr.io/nikitph/laravel-runtime:1.0.0`. Classic FrankenPHP mode is deliberate until concurrent request-state isolation is separately proven.
+
+## Deployment boundary
+
+Production infrastructure is declared with OpenTofu, host configuration is
+converged with Ansible, and Kamal deploys the immutable runtime roles. A
+verified merge to `main` is the application deployment trigger.
+Infrastructure changes pass through a separately protected GitHub Environment
+before apply. `/up` is process liveness; `/ready` verifies PostgreSQL,
+Redis/cache, and the configured regulatory storage disk. See
+`docs/DEPLOYMENT-AUTOMATION.md` for provisioning, recovery, required secrets,
+and Laravel repository onboarding.
