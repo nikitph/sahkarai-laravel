@@ -9,6 +9,7 @@ use App\Jobs\Ingestion\ExtractDocumentText;
 use App\Models\DocumentVersion;
 use App\Models\RegulatoryDocument;
 use App\Models\User;
+use App\Support\Documents\ExtractedTextNormalizer;
 use Dompdf\Dompdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -132,6 +133,50 @@ class UserDocumentUploadTest extends TestCase
             'applicability' => Applicability::Generic,
         ]);
         $this->actingAs($owner)->delete(route('archive.uploads.destroy', $platform))->assertForbidden();
+    }
+
+    public function test_chat_is_hidden_and_rejected_until_extraction_and_interpretation_are_ready(): void
+    {
+        $user = User::factory()->tier2()->create();
+        $document = RegulatoryDocument::query()->create([
+            'source' => RegulatorySource::UserUpload,
+            'source_document_id' => (string) Str::uuid(),
+            'title' => 'Processing upload',
+            'document_type' => DocumentType::Other,
+            'applicability' => Applicability::Generic,
+            'uploaded_by_user_id' => $user->getKey(),
+        ]);
+        $version = $document->versions()->create([
+            'version' => 1,
+            'status' => 'extracted',
+            'extraction_status' => 'ok',
+            'interpretation_status' => 'pending',
+            'original_path' => 'originals/user-uploads/processing.pdf',
+            'mime_type' => 'application/pdf',
+            'sha256' => hash('sha256', 'processing'),
+            'extracted_text' => 'Readable but interpretation is not ready.',
+            'acquired_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('archive.show', $document))
+            ->assertInertia(fn ($page) => $page->where('capabilities.chat', false));
+        $this->actingAs($user)->post(route('chats.store', $document), [
+            'version' => $version->getKey(),
+        ])->assertConflict();
+        $this->assertDatabaseCount('chats', 0);
+    }
+
+    public function test_existing_malformed_extracted_text_is_sanitized_before_ai_use(): void
+    {
+        $version = new DocumentVersion([
+            'extracted_text' => "Reserve Bank\0 of India \xC3\x28 directions",
+        ]);
+
+        $text = $version->sourceText();
+
+        $this->assertTrue(mb_check_encoding($text, 'UTF-8'));
+        $this->assertSame(app(ExtractedTextNormalizer::class)->normalize($text), $text);
+        $this->assertNotFalse(json_encode(['prompt' => $text]));
     }
 
     /** @return array{RegulatoryDocument, DocumentVersion} */

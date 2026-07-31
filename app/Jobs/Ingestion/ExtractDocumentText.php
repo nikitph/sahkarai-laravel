@@ -4,11 +4,12 @@ namespace App\Jobs\Ingestion;
 
 use App\Jobs\Interpretations\GenerateInterpretation;
 use App\Models\DocumentVersion;
+use App\Support\Documents\ExtractedTextNormalizer;
+use App\Support\Documents\ReadablePdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
-use Smalot\PdfParser\Parser;
 use Throwable;
 
 class ExtractDocumentText implements ShouldQueue
@@ -19,8 +20,10 @@ class ExtractDocumentText implements ShouldQueue
 
     public function __construct(public readonly int $documentVersionId) {}
 
-    public function handle(): void
+    public function handle(?ReadablePdf $readablePdf = null, ?ExtractedTextNormalizer $normalizer = null): void
     {
+        $readablePdf ??= app(ReadablePdf::class);
+        $normalizer ??= app(ExtractedTextNormalizer::class);
         $version = DocumentVersion::findOrFail($this->documentVersionId);
         if ($version->extracted_at !== null && filled($version->extracted_text)) {
             $path = $version->extracted_path ?: $this->artifactPath($version->original_path);
@@ -40,12 +43,12 @@ class ExtractDocumentText implements ShouldQueue
         try {
             $contents = Storage::disk(config('sahkarai.ingestion.storage_disk'))->get($version->original_path);
             $text = match ($version->mime_type) {
-                'application/pdf' => $this->extractPdf($contents),
+                'application/pdf' => $readablePdf->extractText($contents),
                 'text/html' => html_entity_decode(strip_tags($contents), ENT_QUOTES | ENT_HTML5),
                 'text/plain' => $contents,
                 default => throw new RuntimeException("Unsupported document type: {$version->mime_type}"),
             };
-            $text = trim(preg_replace('/[ \t]+/', ' ', preg_replace('/\R{3,}/', "\n\n", $text)) ?? '');
+            $text = $normalizer->normalize($text);
             if ($text === '') {
                 throw new RuntimeException('Text extraction produced no content.');
             }
@@ -74,11 +77,6 @@ class ExtractDocumentText implements ShouldQueue
             ]);
             throw $exception;
         }
-    }
-
-    private function extractPdf(string $contents): string
-    {
-        return (new Parser)->parseContent($contents)->getText();
     }
 
     private function artifactPath(string $originalPath): string

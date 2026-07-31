@@ -92,7 +92,7 @@ class ArchiveController extends Controller
             'capabilities' => [
                 'interpretations' => $canInterpret,
                 'exports' => $request->user()->tier->canExportDocuments(),
-                'chat' => $request->user()->canUseChat(),
+                'chat' => $request->user()->canUseChat() && $version->isReadyForChat(),
                 'delete' => $request->user()->can('delete', $document),
                 'admin' => $request->user()->isAdmin(),
             ],

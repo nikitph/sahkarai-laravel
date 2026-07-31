@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Documents\ExtractedTextNormalizer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -62,10 +63,29 @@ class DocumentVersion extends Model
         if ($this->extracted_path) {
             $contents = Storage::disk(config('sahkarai.ingestion.storage_disk'))->get($this->extracted_path);
             if (filled($contents)) {
-                return $contents;
+                return app(ExtractedTextNormalizer::class)->normalize($contents);
             }
         }
 
-        return $this->extracted_text ?? '';
+        return app(ExtractedTextNormalizer::class)->normalize($this->extracted_text ?? '');
+    }
+
+    public function isReadyForChat(): bool
+    {
+        if (
+            $this->extraction_status !== 'ok'
+            || blank($this->extracted_text)
+            || ! in_array($this->interpretation_status, ['published', 'partial'], true)
+        ) {
+            return false;
+        }
+
+        $interpretation = $this->relationLoaded('interpretation')
+            ? $this->interpretation
+            : $this->interpretation()->first();
+
+        return $interpretation !== null
+            && in_array($interpretation->status, ['published', 'partial'], true)
+            && ! empty($interpretation->locale_payloads);
     }
 }
