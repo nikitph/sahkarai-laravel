@@ -3,6 +3,7 @@
 use App\Events\ConformancePing;
 use App\Http\Controllers\Archive\AdminUploadedDocumentController;
 use App\Http\Controllers\Archive\ArchiveController;
+use App\Http\Controllers\Archive\ExplainerVideoController;
 use App\Http\Controllers\Archive\IssueReportController;
 use App\Http\Controllers\Archive\UploadedDocumentController;
 use App\Http\Controllers\Billing\BillingController;
@@ -72,6 +73,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('archive', [ArchiveController::class, 'index'])->name('archive.index');
     Route::get('archive/{document}', [ArchiveController::class, 'show'])->name('archive.show');
     Route::get('archive/{document}/download', [ArchiveController::class, 'download'])->name('archive.download');
+    Route::post('documents/{document}/explainer-videos', [ExplainerVideoController::class, 'store'])->name('explainer-videos.store');
+    Route::get('documents/{document}/explainer-videos/{video}', [ExplainerVideoController::class, 'show'])->name('explainer-videos.show');
     Route::post('archive/uploads', [UploadedDocumentController::class, 'store'])->name('archive.uploads.store');
     Route::delete('archive/uploads/{document}', [UploadedDocumentController::class, 'destroy'])->name('archive.uploads.destroy');
     Route::post('interpretations/{interpretation}/issues', [IssueReportController::class, 'store'])->name('interpretations.issues.store');

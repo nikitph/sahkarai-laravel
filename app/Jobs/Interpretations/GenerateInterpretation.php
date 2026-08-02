@@ -4,6 +4,7 @@ namespace App\Jobs\Interpretations;
 
 use App\Actions\Interpretations\GenerateLocaleInterpretation;
 use App\Actions\Notifications\NotifyRegulatoryUpdate;
+use App\Actions\Videos\QueueExplainerVideo;
 use App\Enums\SupportedLocale;
 use App\Models\DocumentVersion;
 use App\Models\Interpretation;
@@ -24,8 +25,9 @@ class GenerateInterpretation implements ShouldQueue
 
     public function __construct(public readonly int $documentVersionId) {}
 
-    public function handle(GenerateLocaleInterpretation $generate, NotifyRegulatoryUpdate $notify): void
+    public function handle(GenerateLocaleInterpretation $generate, NotifyRegulatoryUpdate $notify, ?QueueExplainerVideo $queueVideo = null): void
     {
+        $queueVideo ??= app(QueueExplainerVideo::class);
         $version = DocumentVersion::findOrFail($this->documentVersionId);
         $interpretation = Interpretation::query()->firstOrCreate(
             ['document_version_id' => $version->getKey()],
@@ -109,6 +111,9 @@ class GenerateInterpretation implements ShouldQueue
 
         if (in_array($status, ['published', 'partial'], true) && $interpretation->wasChanged('published_at')) {
             $notify->handle($version->fresh(['document']));
+            if (! $version->document->isUserUpload()) {
+                $queueVideo->forArchive($version->fresh(['document', 'interpretation']));
+            }
         }
 
         if (! $exhausted && $status === 'generating') {

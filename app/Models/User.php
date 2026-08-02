@@ -77,6 +77,11 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         return $this->isAdmin() || $this->tier->canUploadDocuments();
     }
 
+    public function canUseExplainerVideos(): bool
+    {
+        return $this->tier->canGenerateExplainerVideos();
+    }
+
     public function preferredLocale(): string
     {
         return $this->locale->value;

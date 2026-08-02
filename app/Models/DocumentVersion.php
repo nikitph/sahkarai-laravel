@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $status
  * @property string $extraction_status
  * @property string $interpretation_status
+ * @property string $video_status
  * @property string $original_path
  * @property string|null $original_filename
  * @property string|null $mime_type
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read RegulatoryDocument $document
  * @property-read DocumentVersion|null $supersedes
  * @property-read Interpretation|null $interpretation
+ * @property-read ExplainerVideo|null $explainerVideo
  */
 class DocumentVersion extends Model
 {
@@ -56,6 +58,12 @@ class DocumentVersion extends Model
     public function interpretation(): HasOne
     {
         return $this->hasOne(Interpretation::class);
+    }
+
+    /** @return HasOne<ExplainerVideo, $this> */
+    public function explainerVideo(): HasOne
+    {
+        return $this->hasOne(ExplainerVideo::class);
     }
 
     public function sourceText(): string

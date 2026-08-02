@@ -1,0 +1,59 @@
+# Dedicated long-running video queue worker. This image adds the Node,
+# Chromium and FFmpeg media toolchain without bloating the web runtime.
+service: sahkarai-laravel-video
+image: nikitph/sahkarai-laravel-video
+
+registry:
+  server: ghcr.io
+  username: nikitph
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+
+servers:
+  worker:
+    hosts:
+      - 168.144.27.66
+    cmd: php artisan queue:work --queue=video --tries=2 --sleep=2 --timeout=3600 --max-time=7200
+    proxy: false
+
+env:
+  clear:
+    APP_ENV: production
+    APP_DEBUG: "false"
+    LOG_CHANNEL: stderr
+    LOG_STACK: stderr
+    DB_CONNECTION: pgsql
+    DB_HOST: sahkarai-laravel-postgres
+    DB_PORT: "5432"
+    DB_DATABASE: app
+    DB_USERNAME: app
+    QUEUE_CONNECTION: redis
+    CACHE_STORE: redis
+    REDIS_CLIENT: phpredis
+    REDIS_HOST: sahkarai-laravel-redis
+    REDIS_PORT: "6379"
+    REDIS_QUEUE_RETRY_AFTER: "3900"
+    EXPLAINER_VIDEO_QUEUE: video
+    EXPLAINER_VIDEO_STORAGE_DISK: local
+    EXPLAINER_VIDEO_STORAGE_PREFIX: explainer-videos
+    EXPLAINER_VIDEO_RENDER_TIMEOUT: "3600"
+    EXPLAINER_VIDEO_QUALITY: high
+    EXPLAINER_VIDEO_FPS: "30"
+    EXPLAINER_VIDEO_NARRATION_DRIVER: elevenlabs
+    ELEVENLABS_VOICE_ID: rAsfH6d68tmh0XRGXp4D
+    ELEVENLABS_MODEL_ID: eleven_multilingual_v2
+  secret:
+    - APP_KEY
+    - DB_PASSWORD
+    - ELEVENLABS_API_KEY
+
+volumes:
+  - "sahkarai_storage:/var/www/html/storage/app"
+
+ssh:
+  user: root
+  keys:
+    - ~/.ssh/sahkarai_laravel_deploy

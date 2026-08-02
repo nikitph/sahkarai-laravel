@@ -855,6 +855,12 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame('ok', $version->extraction_status);
         $this->assertSame('published', $version->interpretation_status);
         $this->assertSame('published', $version->status);
+        $this->assertSame('queued', $version->video_status);
+        $this->assertDatabaseHas('explainer_videos', [
+            'document_version_id' => $version->getKey(),
+            'requested_by_user_id' => null,
+            'status' => 'queued',
+        ]);
         $this->assertEqualsCanonicalizing(
             collect(SupportedLocale::cases())->pluck('value')->all(),
             array_keys($version->interpretation->locale_payloads),

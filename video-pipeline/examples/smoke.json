@@ -1,0 +1,55 @@
+{
+  "version": "1.0-no-avatar",
+  "id": "sahkar-smoke",
+  "title": "Regulatory Explainer",
+  "subject": "circular",
+  "gradeLevel": "Cooperative financial institutions",
+  "language": "en-IN",
+  "learningObjectives": [
+    { "id": "objective-opening", "description": "Frame the document." },
+    { "id": "objective-close", "description": "Retain the actions." }
+  ],
+  "prerequisites": [],
+  "estimatedDurationMs": 6000,
+  "presentation": { "branding": "acharya", "headerLabel": "SAHKARAI EXPLAINER" },
+  "narrationProfile": {
+    "provider": "fake",
+    "voiceId": "fixture",
+    "modelId": "fixture",
+    "language": "en-IN",
+    "normalizationVersion": "sahkarai/1.0.0"
+  },
+  "beats": [
+    {
+      "id": "opening",
+      "order": 0,
+      "learningGoal": "Frame the document and its purpose.",
+      "narration": { "text": "A focused explanation of the regulatory change.", "exact": true, "expectedDurationMs": 3000, "cues": [] },
+      "delivery": { "emotion": "serious", "pace": "measured", "intensity": 0.35 },
+      "visualIntent": "title_card",
+      "layout": "canvas_full",
+      "visualSpec": { "type": "title", "title": "What changed?", "subtitle": "A calm, precise SahkarAI explainer." },
+      "constraints": { "exactnessRequired": true },
+      "rendererHint": { "preferred": "hyperframes", "allowed": ["hyperframes"], "qualityTier": "premium" },
+      "binduPlan": { "mode": "highlight", "returnToIdle": true },
+      "transitionIn": { "type": "crossfade", "durationMs": 320 },
+      "transitionOut": { "type": "crossfade", "durationMs": 320 }
+    },
+    {
+      "id": "close",
+      "order": 1,
+      "learningGoal": "Close with the most important actions.",
+      "narration": { "text": "Review the requirement, assign an owner, and preserve evidence.", "exact": true, "expectedDurationMs": 3000, "cues": [] },
+      "delivery": { "emotion": "serious", "pace": "measured", "intensity": 0.35 },
+      "visualIntent": "recap",
+      "layout": "recap_card",
+      "visualSpec": { "type": "recap", "points": ["Review the requirement", "Assign an owner", "Preserve evidence"] },
+      "constraints": { "exactnessRequired": true },
+      "rendererHint": { "preferred": "hyperframes", "allowed": ["hyperframes"], "qualityTier": "premium" },
+      "binduPlan": { "mode": "underline", "returnToIdle": true },
+      "transitionIn": { "type": "crossfade", "durationMs": 320 },
+      "transitionOut": { "type": "crossfade", "durationMs": 320 }
+    }
+  ],
+  "metadata": { "locale": "en", "documentVersionId": 1 }
+}

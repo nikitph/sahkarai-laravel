@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import {
     ArrowRight,
     Calendar,
+    Clapperboard,
     DatabaseZap,
     FileText,
     LockKeyhole,
@@ -30,6 +31,7 @@ type Document = {
     status: string | null;
     extraction_status: string | null;
     interpretation_status: string | null;
+    video_status: string | null;
     is_user_upload: boolean;
     is_admin_upload: boolean;
     is_public: boolean;
@@ -401,6 +403,21 @@ export default function ArchiveIndex({
                                                         Admin upload
                                                     </Badge>
                                                 )}
+                                            {document.video_status ===
+                                                'ready' && (
+                                                <Badge variant="outline">
+                                                    <Clapperboard className="mr-1 size-3" />
+                                                    Video
+                                                </Badge>
+                                            )}
+                                            {['queued', 'generating'].includes(
+                                                document.video_status ?? '',
+                                            ) && (
+                                                <Badge variant="outline">
+                                                    <Clapperboard className="mr-1 size-3" />
+                                                    Video generating
+                                                </Badge>
+                                            )}
                                             {document.is_admin_upload &&
                                                 !document.is_public && (
                                                     <Badge variant="outline">

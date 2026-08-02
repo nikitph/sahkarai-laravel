@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Contracts\Billing\BillingGateway;
+use App\Contracts\Videos\ExplainerVideoGenerator;
 use App\Services\Billing\RazorpayGateway;
+use App\Services\Videos\AcharyaCliExplainerVideoGenerator;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -20,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(TenantContext::class);
         $this->app->bind(BillingGateway::class, RazorpayGateway::class);
+        $this->app->bind(ExplainerVideoGenerator::class, AcharyaCliExplainerVideoGenerator::class);
     }
 
     /**

@@ -24,6 +24,23 @@ return [
     'credits' => [
         'topup_url' => env('CREDIT_TOPUP_URL'),
     ],
+    'video' => [
+        'storage_disk' => env('EXPLAINER_VIDEO_STORAGE_DISK', env('FILESYSTEM_DISK', 'local')),
+        'storage_prefix' => trim((string) env('EXPLAINER_VIDEO_STORAGE_PREFIX', 'explainer-videos'), '/'),
+        'queue' => env('EXPLAINER_VIDEO_QUEUE', 'video'),
+        'queue_connection' => env('EXPLAINER_VIDEO_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'sync')),
+        'credits' => (int) env('EXPLAINER_VIDEO_CREDITS', 10),
+        'node_binary' => env('EXPLAINER_VIDEO_NODE_BINARY', 'node'),
+        'render_timeout' => (int) env('EXPLAINER_VIDEO_RENDER_TIMEOUT', 3600),
+        'quality' => env('EXPLAINER_VIDEO_QUALITY', 'high'),
+        'fps' => (int) env('EXPLAINER_VIDEO_FPS', 30),
+        'narration_driver' => env('EXPLAINER_VIDEO_NARRATION_DRIVER', 'elevenlabs'),
+        'elevenlabs' => [
+            'api_key' => env('ELEVENLABS_API_KEY'),
+            'voice_id' => env('ELEVENLABS_VOICE_ID', 'rAsfH6d68tmh0XRGXp4D'),
+            'model_id' => env('ELEVENLABS_MODEL_ID', 'eleven_multilingual_v2'),
+        ],
+    ],
     'realtime' => [
         // Sent to authenticated Inertia clients at request time. Keeping these
         // values out of the Vite build makes one immutable image deployable to
