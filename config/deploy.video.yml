@@ -2,6 +2,7 @@
 # Chromium and FFmpeg media toolchain without bloating the web runtime.
 service: sahkarai-laravel-video
 image: nikitph/sahkarai-laravel-video
+primary_role: worker
 
 registry:
   server: ghcr.io
