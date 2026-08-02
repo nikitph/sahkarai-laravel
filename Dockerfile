@@ -48,7 +48,7 @@ RUN npm ci --no-audit --no-fund \
  && npm run build
 
 # ---- Stage 4: the runtime ----------------------------------------------
-FROM ${RUNTIME}
+FROM ${RUNTIME} AS app-runtime
 USER root
 WORKDIR /var/www/html
 
@@ -71,3 +71,28 @@ ARG SERVICE=sahkarai-laravel
 LABEL service="${SERVICE}"
 
 # Entrypoint / CMD (frankenphp run) / healthcheck inherited from the runtime.
+
+# ---- Stage 5: video pipeline dependencies ------------------------------
+FROM node-toolchain AS video-dependencies
+WORKDIR /build/video-pipeline
+COPY video-pipeline/package.json video-pipeline/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# ---- Stage 6: dedicated video queue runtime ----------------------------
+# This target is deployed separately. Web/general workers intentionally stay
+# on app-runtime and therefore do not carry Node, Chromium or FFmpeg.
+FROM app-runtime AS video-runtime
+USER root
+COPY --from=node-toolchain /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-toolchain /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends chromium ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=video-dependencies --chown=www-data:www-data /build/video-pipeline/node_modules ./video-pipeline/node_modules
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+USER www-data
+
+ARG SERVICE=sahkarai-laravel-video
+LABEL service="${SERVICE}"

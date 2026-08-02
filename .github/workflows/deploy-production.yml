@@ -23,12 +23,14 @@ jobs:
       VERSION: ${{ github.event.workflow_run.head_sha }}
       IMAGE: ghcr.io/nikitph/sahkarai-laravel
       REVERB_IMAGE: ghcr.io/nikitph/sahkarai-laravel-reverb
+      VIDEO_IMAGE: ghcr.io/nikitph/sahkarai-laravel-video
       KAMAL_REGISTRY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
       APP_KEY: ${{ secrets.APP_KEY }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       REVERB_APP_SECRET: ${{ secrets.REVERB_APP_SECRET }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
       RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
       RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
@@ -62,6 +64,7 @@ jobs:
           push: true
           tags: ${{ env.IMAGE }}:${{ env.VERSION }}
           build-args: SERVICE=sahkarai-laravel
+          target: app-runtime
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -74,6 +77,20 @@ jobs:
           push: true
           tags: ${{ env.REVERB_IMAGE }}:${{ env.VERSION }}
           build-args: SERVICE=sahkarai-laravel-reverb
+          target: app-runtime
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and publish video worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          provenance: false
+          push: true
+          tags: ${{ env.VIDEO_IMAGE }}:${{ env.VERSION }}
+          target: video-runtime
+          build-args: SERVICE=sahkarai-laravel-video
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -102,6 +119,7 @@ jobs:
             'POSTGRES_PASSWORD=$POSTGRES_PASSWORD' \
             'REVERB_APP_SECRET=$REVERB_APP_SECRET' \
             'DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY' \
+            'ELEVENLABS_API_KEY=$ELEVENLABS_API_KEY' \
             'RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID' \
             'RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET' \
             'RAZORPAY_WEBHOOK_SECRET=$RAZORPAY_WEBHOOK_SECRET' \
@@ -114,6 +132,7 @@ jobs:
         run: |
           kamal deploy --version="$VERSION" --skip-push
           kamal deploy -c config/deploy.reverb.yml --version="$VERSION" --skip-push
+          kamal deploy -c config/deploy.video.yml --version="$VERSION" --skip-push
 
       - name: Verify public health endpoint
         run: curl --fail --retry 8 --retry-delay 3 --retry-all-errors https://app.168.144.27.66.sslip.io/up

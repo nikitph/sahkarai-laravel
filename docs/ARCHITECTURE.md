@@ -6,6 +6,10 @@ The platform regulatory pipeline is:
 
 `scheduled poll → source adapter → acquire immutable original → extract text → AI interpretation → publish → notify eligible users`
 
+Published archive interpretations also enter the explainer pipeline:
+
+`published interpretation → validated Lesson IR → video queue → narration-first HyperFrames render → immutable MP4 + provenance manifest`
+
 The private upload pipeline reuses the same downstream jobs:
 
 `Tier 2 / Tier 3 / admin upload → Laravel content-based PDF validation → PDF parser preflight → store private immutable original → extract text → AI interpretation → publish to owner`
@@ -24,6 +28,8 @@ The initializer's organization infrastructure remains installed but dormant for 
 
 Polled regulatory documents, their versions, poll runs, and ingestion alerts are platform-owned. Tier 2, Tier 3, and SaaS admin users may also create private, user-owned documents from readable PDFs up to 5 MB. Private documents, extracted text, interpretations, downloads, exports, and document-grounded chats are visible only to the uploader. Owner deletion cascades database records and removes stored original/extracted artifacts; permanent account purge does the same. Private publications never enter regulatory notification fan-out.
 
+Tier 2 and Tier 3 users can view explainer videos. Public archive versions queue them automatically after a published or partial interpretation. A private upload requires an explicit owner request and one idempotent ten-credit debit; terminal rendering failure refunds that debit. Video readiness is orthogonal to interpretation and chat readiness.
+
 ## Data invariants
 
 - `(source, source_document_id)` identifies a regulatory document.
@@ -31,6 +37,7 @@ Polled regulatory documents, their versions, poll runs, and ingestion alerts are
 - Original bytes are stored once at a canonical path and identified by SHA-256.
 - Each changed byte sequence creates a new immutable `document_version`; revisions link with `supersedes_id`.
 - A document version has at most one interpretation row. Locale prose is generated independently with bounded retries; applicability, effective date, document type, and deadlines are stored once as locale-independent metadata.
+- A document version has at most one canonical explainer video. Its MP4 and build manifest share one content-addressed storage prefix, and rendering state never changes chat availability.
 - A chat is permanently bound to one user and one document version.
 - Chat messages and credit-ledger entries are append-only. A user message and its one-credit debit happen atomically and idempotently.
 - Razorpay events are signature-verified and deduplicated before state transitions.
@@ -49,11 +56,13 @@ Razorpay is authoritative for activation and renewal. Local checkout requests ne
 
 ## Runtime topology
 
-One immutable image runs four roles with different commands:
+The lean immutable application image runs four roles with different commands:
 
 - web: FrankenPHP/Inertia requests and streaming responses
 - worker: ingestion, extraction, AI, mail, billing, and cleanup jobs
 - scheduler: polls, digests, pending transitions, reconciliation, and purges
 - reverb: WebSocket transport
+
+A separate immutable video-worker image runs Laravel's `video` queue with Node 22, Chromium, FFmpeg and the pinned HyperFrames runtime. Laravel remains the control plane and invokes the renderer through `ExplainerVideoGenerator`; the normal web and queue images intentionally contain no media toolchain. The video storage disk and prefix are independently configurable.
 
 PostgreSQL stores application state; Redis backs queues/cache. The frozen multi-arch runtime is `ghcr.io/nikitph/laravel-runtime:1.0.0`. Classic FrankenPHP mode is deliberate until concurrent request-state isolation is separately proven.

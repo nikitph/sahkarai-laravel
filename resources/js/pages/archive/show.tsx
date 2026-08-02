@@ -4,6 +4,7 @@ import {
     ArrowLeft,
     Bot,
     CalendarDays,
+    Clapperboard,
     Download,
     ExternalLink,
     FileDown,
@@ -36,6 +37,7 @@ type Version = {
     status: string;
     extraction_status: string;
     interpretation_status: string;
+    video_status: string;
     extraction_error: string | null;
     original_filename: string;
     mime_type: string;
@@ -50,6 +52,14 @@ type Version = {
         model_id: string;
         prompt_version: string;
         generated_at: string;
+    } | null;
+    explainer_video: {
+        id: number;
+        status: 'queued' | 'generating' | 'ready' | 'failed';
+        duration_ms: number | null;
+        failure_code: string | null;
+        completed_at: string | null;
+        url: string | null;
     } | null;
 };
 type Document = {
@@ -84,6 +94,9 @@ export default function ArchiveShow({
         interpretations: boolean;
         exports: boolean;
         chat: boolean;
+        video: boolean;
+        generate_video: boolean;
+        video_credits: number;
         delete: boolean;
         admin: boolean;
     };
@@ -95,8 +108,11 @@ export default function ArchiveShow({
         !['published', 'extraction_failed', 'interpretation_failed'].includes(
             v.status,
         );
+    const videoProcessing =
+        v?.explainer_video?.status === 'queued' ||
+        v?.explainer_video?.status === 'generating';
     useEffect(() => {
-        if (!processing) {
+        if (!processing && !videoProcessing) {
             return;
         }
 
@@ -106,7 +122,7 @@ export default function ArchiveShow({
         );
 
         return () => window.clearInterval(timer);
-    }, [processing]);
+    }, [processing, videoProcessing]);
     const report = useForm({
         category: '',
         locale: v?.requested_locale ?? 'en',
@@ -248,6 +264,116 @@ export default function ArchiveShow({
                                 </CardContent>
                             </Card>
                         )}
+                        {capabilities.video &&
+                            v?.explainer_video?.status === 'ready' &&
+                            v.explainer_video.url && (
+                                <Card className="overflow-hidden rounded-2xl border-slate-200 bg-slate-950 shadow-xl">
+                                    <div className="aspect-video bg-black">
+                                        <video
+                                            className="h-full w-full"
+                                            controls
+                                            preload="metadata"
+                                            src={v.explainer_video.url}
+                                        >
+                                            Your browser does not support video
+                                            playback.
+                                        </video>
+                                    </div>
+                                    <CardContent className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-5 text-white">
+                                        <div>
+                                            <p className="flex items-center gap-2 font-semibold">
+                                                <Clapperboard className="size-5 text-amber-400" />
+                                                SahkarAI explainer video
+                                            </p>
+                                            <p className="mt-1 text-sm text-slate-300">
+                                                Generated from this exact
+                                                interpretation using the Acharya
+                                                visual system.
+                                            </p>
+                                        </div>
+                                        {v.explainer_video.duration_ms && (
+                                            <Badge className="bg-white/10 text-white hover:bg-white/10">
+                                                {Math.ceil(
+                                                    v.explainer_video
+                                                        .duration_ms / 60000,
+                                                )}{' '}
+                                                min
+                                            </Badge>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                        {capabilities.video && videoProcessing && (
+                            <Card className="rounded-2xl border-amber-300/60 bg-amber-50/50 dark:bg-amber-950/10">
+                                <CardContent className="flex items-center gap-4 p-5">
+                                    <LoaderCircle className="size-6 animate-spin text-amber-600" />
+                                    <div>
+                                        <p className="font-semibold">
+                                            Generating explainer video
+                                        </p>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Narration, visual scenes and the
+                                            final composition are being
+                                            rendered. This page refreshes
+                                            automatically.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {capabilities.generate_video &&
+                            v?.interpretation &&
+                            (!v.explainer_video ||
+                                v.explainer_video.status === 'failed') && (
+                                <Card className="rounded-2xl border-amber-300/60 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/10">
+                                    <CardContent className="flex flex-col justify-between gap-5 p-6 sm:flex-row sm:items-center">
+                                        <div>
+                                            <p className="flex items-center gap-2 font-semibold">
+                                                <Clapperboard className="size-5 text-amber-600" />
+                                                Generate an explainer video
+                                            </p>
+                                            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                                                Turn this private interpretation
+                                                into a narrated visual explainer
+                                                for {capabilities.video_credits}{' '}
+                                                credits. Failed renders are
+                                                refunded automatically.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            className="shrink-0"
+                                            onClick={() =>
+                                                router.post(
+                                                    `/documents/${document.id}/explainer-videos`,
+                                                    {
+                                                        version: v.id,
+                                                        locale: v.requested_locale,
+                                                    },
+                                                )
+                                            }
+                                        >
+                                            <Clapperboard className="mr-1 size-4" />
+                                            Generate ·{' '}
+                                            {capabilities.video_credits} credits
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        {capabilities.video &&
+                            !document.is_user_upload &&
+                            v?.explainer_video?.status === 'failed' && (
+                                <Card className="rounded-2xl border-destructive/40">
+                                    <CardContent className="p-5">
+                                        <p className="font-semibold text-destructive">
+                                            Explainer video generation failed
+                                        </p>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            The archive worker will retry this
+                                            video automatically.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
                         {capabilities.interpretations && v?.interpretation ? (
                             <>
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-3">
