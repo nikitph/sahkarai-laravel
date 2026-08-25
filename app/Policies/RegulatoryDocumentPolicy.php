@@ -31,4 +31,10 @@ class RegulatoryDocumentPolicy
         return $document->uploaded_by_user_id !== null
             && $document->uploaded_by_user_id === $user->getKey();
     }
+
+    public function generateExplainerVideo(User $user, RegulatoryDocument $document): bool
+    {
+        return $user->canUseExplainerVideos()
+            && $document->uploaded_by_user_id === $user->getKey();
+    }
 }

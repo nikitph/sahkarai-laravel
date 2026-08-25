@@ -39,6 +39,11 @@ enum Tier: string
         return in_array($this, [self::Tier2, self::Tier3], true);
     }
 
+    public function canGenerateExplainerVideos(): bool
+    {
+        return in_array($this, [self::Tier2, self::Tier3], true);
+    }
+
     public function rank(): int
     {
         return match ($this) {

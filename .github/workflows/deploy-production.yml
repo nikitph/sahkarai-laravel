@@ -243,6 +243,7 @@ jobs:
       VERSION: ${{ github.event.workflow_run.head_sha }}
       IMAGE: ghcr.io/nikitph/sahkarai-laravel
       REVERB_IMAGE: ghcr.io/nikitph/sahkarai-laravel-reverb
+      VIDEO_IMAGE: ghcr.io/nikitph/sahkarai-laravel-video
       DEPLOY_HOST: ${{ needs.infrastructure.outputs.deployment_host || vars.DEPLOY_HOST }}
       APP_HOST: ${{ needs.infrastructure.outputs.app_host || vars.APP_HOST }}
       DEPLOY_REVERB_HOST: ${{ needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
@@ -257,6 +258,7 @@ jobs:
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
       REVERB_APP_SECRET: ${{ secrets.REVERB_APP_SECRET }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
       RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
       RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
@@ -298,6 +300,7 @@ jobs:
           push: true
           tags: ${{ env.IMAGE }}:${{ env.VERSION }}
           build-args: SERVICE=sahkarai-laravel
+          target: app-runtime
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -311,6 +314,20 @@ jobs:
           push: true
           tags: ${{ env.REVERB_IMAGE }}:${{ env.VERSION }}
           build-args: SERVICE=sahkarai-laravel-reverb
+          target: app-runtime
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and publish video worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          provenance: false
+          push: true
+          tags: ${{ env.VIDEO_IMAGE }}:${{ env.VERSION }}
+          target: video-runtime
+          build-args: SERVICE=sahkarai-laravel-video
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -341,6 +358,7 @@ jobs:
             'POSTGRES_PASSWORD=$POSTGRES_PASSWORD' \
             'REVERB_APP_SECRET=$REVERB_APP_SECRET' \
             'DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY' \
+            'ELEVENLABS_API_KEY=$ELEVENLABS_API_KEY' \
             'RAZORPAY_KEY_ID=$RAZORPAY_KEY_ID' \
             'RAZORPAY_KEY_SECRET=$RAZORPAY_KEY_SECRET' \
             'RAZORPAY_WEBHOOK_SECRET=$RAZORPAY_WEBHOOK_SECRET' \
@@ -359,7 +377,13 @@ jobs:
               "$DEPLOY_USER@$DEPLOY_HOST" \
               "docker ps --filter label=service=sahkarai-laravel --format '{{.Image}}' | head -n 1"
           )"
+          video_image="$(
+            ssh -i ~/.ssh/sahkarai_laravel_deploy \
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "docker ps --filter label=service=sahkarai-laravel-video --format '{{.Image}}' | head -n 1"
+          )"
           echo "version=${image##*:}" >> "$GITHUB_OUTPUT"
+          echo "video_version=${video_image##*:}" >> "$GITHUB_OUTPUT"
 
       - name: Back up PostgreSQL before migrations
         if: vars.BACKUP_ENABLED == 'true' && steps.previous.outputs.version != ''
@@ -387,6 +411,9 @@ jobs:
         if: vars.REVERB_ENABLED != 'false'
         run: kamal deploy -c config/deploy.reverb.yml --version="$VERSION" --skip-push
 
+      - name: Roll out the verified video worker revision
+        run: kamal deploy -c config/deploy.video.yml --version="$VERSION" --skip-push
+
       - name: Verify production fidelity
         id: fidelity
         env:
@@ -402,4 +429,7 @@ jobs:
           kamal rollback "${{ steps.previous.outputs.version }}"
           if [[ "${{ vars.REVERB_ENABLED }}" != 'false' ]]; then
             kamal rollback -c config/deploy.reverb.yml "${{ steps.previous.outputs.version }}"
+          fi
+          if [[ -n "${{ steps.previous.outputs.video_version }}" ]]; then
+            kamal rollback -c config/deploy.video.yml "${{ steps.previous.outputs.video_version }}"
           fi

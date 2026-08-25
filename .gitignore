@@ -1,6 +1,8 @@
 /.phpunit.cache
 /bootstrap/ssr
 /node_modules
+/video-pipeline/node_modules
+/video-pipeline/output
 /conformance/node_modules
 /.kamal/secrets
 /infra/ansible/inventory.yml

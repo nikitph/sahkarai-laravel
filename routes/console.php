@@ -52,3 +52,4 @@ Schedule::job(new SendNotificationDigest('weekly_digest'))->mondays()->at('03:30
 Schedule::job(new ReconcileSubscriptions)->dailyAt('02:00');
 Schedule::job(new ApplyPendingSubscriptionChanges)->everyFiveMinutes();
 Schedule::job(new PurgeExpiredAccounts)->dailyAt('02:30');
+Schedule::command('sahkarai:videos:backfill --limit=25')->hourly()->withoutOverlapping();

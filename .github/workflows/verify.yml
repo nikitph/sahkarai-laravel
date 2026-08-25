@@ -36,5 +36,7 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: composer audit --locked
       - run: npm ci
+      - run: npm ci --prefix video-pipeline --ignore-scripts
+      - run: npm run check --prefix video-pipeline
       - run: composer verify
       - run: git diff --exit-code -- resources/js/actions resources/js/routes

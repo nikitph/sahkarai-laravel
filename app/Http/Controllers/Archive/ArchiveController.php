@@ -59,7 +59,7 @@ class ArchiveController extends Controller
             'locale' => ['nullable', Rule::enum(SupportedLocale::class)],
             'version' => ['nullable', 'integer', 'min:1'],
         ]);
-        $document->load(['versions.interpretation', 'latestVersion.interpretation']);
+        $document->load(['versions.interpretation', 'versions.explainerVideo', 'latestVersion.interpretation', 'latestVersion.explainerVideo']);
         $version = isset($validated['version'])
             ? $document->versions->firstWhere('id', $validated['version'])
             : $document->latestVersion;
@@ -73,6 +73,8 @@ class ArchiveController extends Controller
         $availableLocale = $canInterpret && $version->interpretation
             ? (isset($version->interpretation->locale_payloads[$requestedLocale]) ? $requestedLocale : 'en')
             : null;
+        $canUseVideo = $request->user()->canUseExplainerVideos();
+        $video = $version->explainerVideo;
 
         return Inertia::render('archive/show', [
             'document' => [
@@ -80,19 +82,26 @@ class ArchiveController extends Controller
                 'is_user_upload' => $document->isUserUpload(),
                 'is_admin_upload' => $document->isAdminUpload(),
                 'latest_version' => [
-                    ...$version->only(['id', 'version', 'status', 'extraction_status', 'interpretation_status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at', 'extraction_error']),
+                    ...$version->only(['id', 'version', 'status', 'extraction_status', 'interpretation_status', 'video_status', 'original_filename', 'mime_type', 'size_bytes', 'acquired_at', 'extraction_error']),
                     'interpretation' => $canInterpret ? $version->interpretation?->payloadFor($requestedLocale) : null,
                     'interpretation_locale' => $availableLocale,
                     'requested_locale' => $requestedLocale,
                     'locale_fallback' => $availableLocale === 'en' && $requestedLocale !== 'en',
                     'interpretation_meta' => $canInterpret ? $version->interpretation?->only(['id', 'status', 'model_id', 'prompt_version', 'generated_at']) : null,
+                    'explainer_video' => $canUseVideo && $video ? [
+                        ...$video->only(['id', 'status', 'duration_ms', 'failure_code', 'completed_at']),
+                        'url' => $video->status->value === 'ready' ? route('explainer-videos.show', [$document, $video]) : null,
+                    ] : null,
                 ],
                 'versions' => $document->versions->map->only(['id', 'version', 'status', 'acquired_at']),
             ],
             'capabilities' => [
                 'interpretations' => $canInterpret,
                 'exports' => $request->user()->tier->canExportDocuments(),
-                'chat' => $request->user()->canUseChat(),
+                'chat' => $request->user()->canUseChat() && $version->isReadyForChat(),
+                'video' => $canUseVideo,
+                'generate_video' => $request->user()->can('generateExplainerVideo', $document),
+                'video_credits' => config('sahkarai.video.credits'),
                 'delete' => $request->user()->can('delete', $document),
                 'admin' => $request->user()->isAdmin(),
             ],
@@ -142,6 +151,7 @@ class ArchiveController extends Controller
             'status' => $document->latestVersion?->status,
             'extraction_status' => $document->latestVersion?->extraction_status,
             'interpretation_status' => $document->latestVersion?->interpretation_status,
+            'video_status' => $document->latestVersion?->video_status,
             'snippet' => str($snippet)->limit(180)->toString(),
             'matched_field' => $matchedField,
         ];
