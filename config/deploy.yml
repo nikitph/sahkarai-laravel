@@ -53,6 +53,7 @@ proxy:
 
 env:
   clear:
+    APP_NAME: SahkarAI
     APP_ENV: production
     APP_DEBUG: "false"
     APP_URL: https://<%= ENV.fetch("APP_HOST") %>
