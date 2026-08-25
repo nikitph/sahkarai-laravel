@@ -4,6 +4,8 @@ region               = "blr1"
 droplet_name         = "sahkarai-production"
 droplet_size         = "s-2vcpu-4gb"
 droplet_image        = "ubuntu-24-04-x64"
+app_host             = "app.example.com"
+reverb_host          = "ws.example.com"
 ssh_key_fingerprints = ["replace-with-digitalocean-key-fingerprint"]
 ssh_allowed_cidrs    = ["replace-with-your-public-ip/32"]
 

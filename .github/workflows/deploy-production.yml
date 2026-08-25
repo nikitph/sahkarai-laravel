@@ -246,7 +246,9 @@ jobs:
       VIDEO_IMAGE: ghcr.io/nikitph/sahkarai-laravel-video
       DEPLOY_HOST: ${{ needs.infrastructure.outputs.deployment_host || vars.DEPLOY_HOST }}
       APP_HOST: ${{ needs.infrastructure.outputs.app_host || vars.APP_HOST }}
+      APP_HOSTS: ${{ vars.APP_HOSTS || needs.infrastructure.outputs.app_host || vars.APP_HOST }}
       DEPLOY_REVERB_HOST: ${{ needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
+      DEPLOY_REVERB_HOSTS: ${{ vars.DEPLOY_REVERB_HOSTS || needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
       REGULATORY_STORAGE_DISK: ${{ vars.REGULATORY_STORAGE_DISK || 'local' }}
       SPACES_REGION: ${{ vars.SPACES_REGION || 'blr1' }}
@@ -279,7 +281,9 @@ jobs:
         run: |
           test -n "$DEPLOY_HOST"
           test -n "$APP_HOST"
+          test -n "$APP_HOSTS"
           test -n "$DEPLOY_REVERB_HOST"
+          test -n "$DEPLOY_REVERB_HOSTS"
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3

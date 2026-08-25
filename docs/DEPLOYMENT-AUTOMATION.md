@@ -112,7 +112,9 @@ Repository or environment variables:
 | --- | --- |
 | `DEPLOY_HOST` | Reserved IP when infrastructure is unchanged |
 | `APP_HOST` | Public application hostname |
+| `APP_HOSTS` | Optional comma-separated TLS hostnames routed to the app; `APP_HOST` remains canonical |
 | `DEPLOY_REVERB_HOST` | Public Reverb hostname |
+| `DEPLOY_REVERB_HOSTS` | Optional comma-separated TLS hostnames routed to Reverb |
 | `DEPLOY_USER` | Normally `deploy` |
 | `INFRASTRUCTURE_AUTOMATION_ENABLED` | `true` only after remote OpenTofu state and infrastructure environment protections are ready |
 | `REVERB_ENABLED` | `true` for SahkarAI; set `false` in apps without Reverb |

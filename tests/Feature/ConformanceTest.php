@@ -82,4 +82,21 @@ class ConformanceTest extends TestCase
         $response->assertSee('https://app.example.test/build/', false);
         $response->assertDontSee('http://app.example.test/build/', false);
     }
+
+    public function test_public_pages_expose_branded_social_preview_metadata(): void
+    {
+        $response = $this
+            ->withHeaders([
+                'X-Forwarded-Host' => 'sahkar.ai',
+                'X-Forwarded-Port' => '443',
+                'X-Forwarded-Proto' => 'https',
+            ])
+            ->get('/');
+
+        $response->assertOk();
+        $response->assertSee('<meta property="og:site_name" content="SahkarAI">', false);
+        $response->assertSee('<meta property="og:title" content="SahkarAI — Regulatory intelligence">', false);
+        $response->assertSee('<meta property="og:image" content="https://sahkar.ai/social-preview.png">', false);
+        $response->assertSee('<meta name="twitter:card" content="summary_large_image">', false);
+    }
 }

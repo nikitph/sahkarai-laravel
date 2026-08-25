@@ -26,7 +26,7 @@ servers:
 
 proxy:
   ssl: true
-  host: <%= ENV.fetch("DEPLOY_REVERB_HOST") %>
+  hosts: <%= ENV.fetch("DEPLOY_REVERB_HOSTS", ENV.fetch("DEPLOY_REVERB_HOST")).split(",").map(&:strip) %>
   app_port: 8080
   healthcheck:
     path: /up          # Reverb answers /up with 200 — verified
