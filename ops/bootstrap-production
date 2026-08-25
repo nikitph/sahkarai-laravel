@@ -33,6 +33,8 @@ Infrastructure is ready.
 GitHub production variables:
   DEPLOY_HOST=$deployment_host
   APP_HOST=$app_host
+  APP_HOSTS=$app_host
   DEPLOY_REVERB_HOST=$reverb_host
+  DEPLOY_REVERB_HOSTS=$reverb_host
   DEPLOY_USER=deploy
 EOF

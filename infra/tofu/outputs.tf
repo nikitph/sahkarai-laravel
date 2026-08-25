@@ -9,13 +9,13 @@ output "deployment_host" {
 }
 
 output "app_host" {
-  description = "Default sslip.io application hostname."
-  value       = "app.${digitalocean_reserved_ip.application.ip_address}.sslip.io"
+  description = "Configured application hostname, or the default sslip.io hostname."
+  value       = var.app_host != "" ? var.app_host : "app.${digitalocean_reserved_ip.application.ip_address}.sslip.io"
 }
 
 output "reverb_host" {
-  description = "Default sslip.io Reverb hostname."
-  value       = "ws.${digitalocean_reserved_ip.application.ip_address}.sslip.io"
+  description = "Configured Reverb hostname, or the default sslip.io hostname."
+  value       = var.reverb_host != "" ? var.reverb_host : "ws.${digitalocean_reserved_ip.application.ip_address}.sslip.io"
 }
 
 output "spaces_bucket" {

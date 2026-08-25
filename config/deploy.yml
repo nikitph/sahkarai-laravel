@@ -44,7 +44,7 @@ servers:
 # THE question this test exists to answer: does SSE survive this proxy?
 proxy:
   ssl: true
-  host: <%= ENV.fetch("APP_HOST") %>
+  hosts: <%= ENV.fetch("APP_HOSTS", ENV.fetch("APP_HOST")).split(",").map(&:strip) %>
   app_port: 8080
   healthcheck:
     path: /up

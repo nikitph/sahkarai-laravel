@@ -34,6 +34,18 @@ variable "droplet_image" {
   default     = "ubuntu-24-04-x64"
 }
 
+variable "app_host" {
+  description = "Canonical application hostname. Leave empty to use the reserved-IP sslip.io hostname."
+  type        = string
+  default     = ""
+}
+
+variable "reverb_host" {
+  description = "Public Reverb hostname. Leave empty to use the reserved-IP sslip.io hostname."
+  type        = string
+  default     = ""
+}
+
 variable "ssh_key_fingerprints" {
   description = "DigitalOcean SSH key fingerprints installed on the droplet."
   type        = list(string)
