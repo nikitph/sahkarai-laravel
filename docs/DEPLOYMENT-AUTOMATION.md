@@ -64,6 +64,12 @@ verified revision on `main` triggers `deploy production`.
 The workflow has a `production` concurrency lock, so two merges cannot deploy
 simultaneously.
 
+Infrastructure planning and apply are additionally gated by
+`INFRASTRUCTURE_AUTOMATION_ENABLED=true`. When the flag is absent or false,
+even a merge containing `infra/` changes deploys the application to the
+configured host without touching OpenTofu. This is the safe bootstrap mode
+while the authoritative state is held locally or remote state is unavailable.
+
 Database migrations must remain backward compatible with the preceding
 application release. Container rollback cannot reverse a destructive schema
 migration.
@@ -108,6 +114,7 @@ Repository or environment variables:
 | `APP_HOST` | Public application hostname |
 | `DEPLOY_REVERB_HOST` | Public Reverb hostname |
 | `DEPLOY_USER` | Normally `deploy` |
+| `INFRASTRUCTURE_AUTOMATION_ENABLED` | `true` only after remote OpenTofu state and infrastructure environment protections are ready |
 | `REVERB_ENABLED` | `true` for SahkarAI; set `false` in apps without Reverb |
 | `BACKUP_ENABLED` | Enables pre-deploy and scheduled database backups |
 | `REGULATORY_STORAGE_DISK` | Use `s3` after object-storage migration |
@@ -236,6 +243,18 @@ The migration sequence is:
 4. set `REGULATORY_STORAGE_DISK=s3` in the production environment;
 5. deploy and confirm `/ready`, downloads, extraction, and uploads;
 6. retain the Docker volume until a restore drill succeeds.
+
+### Current local-storage bootstrap mode
+
+If Spaces is temporarily unavailable, keep
+`INFRASTRUCTURE_AUTOMATION_ENABLED=false`, `REGULATORY_STORAGE_DISK=local`, and
+`BACKUP_ENABLED=false`. OpenTofu's authoritative local state must live outside
+the repository on a protected operator machine and be backed up independently.
+DigitalOcean droplet backups reduce recovery risk, but they are not a substitute
+for remote OpenTofu state, application-level PostgreSQL backups, or object
+storage. Before enabling infrastructure automation, create the private state
+bucket, migrate the local state into it, run `tofu plan` expecting no changes,
+and configure the protected GitHub infrastructure environments.
 
 ## Recovery
 

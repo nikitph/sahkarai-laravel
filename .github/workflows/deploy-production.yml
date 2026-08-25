@@ -31,11 +31,23 @@ jobs:
       - name: Classify the merged change
         id: changes
         shell: bash
+        env:
+          INFRASTRUCTURE_AUTOMATION_ENABLED: ${{ vars.INFRASTRUCTURE_AUTOMATION_ENABLED || 'false' }}
         run: |
           set -Eeuo pipefail
           base="$(git rev-parse HEAD^ 2>/dev/null || git hash-object -t tree /dev/null)"
           if git diff --name-only "$base" HEAD | grep -Eq '^infra/'; then
-            echo 'infrastructure=true' >> "$GITHUB_OUTPUT"
+            if [[ "$INFRASTRUCTURE_AUTOMATION_ENABLED" == 'true' ]]; then
+              echo 'infrastructure=true' >> "$GITHUB_OUTPUT"
+            else
+              echo 'infrastructure=false' >> "$GITHUB_OUTPUT"
+              {
+                echo '## Infrastructure automation deferred'
+                echo
+                echo 'This revision changes the infra directory, but infrastructure automation is not enabled.'
+                echo 'The application deploy will continue against the configured production host; OpenTofu will not plan or apply.'
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             echo 'infrastructure=false' >> "$GITHUB_OUTPUT"
           fi
