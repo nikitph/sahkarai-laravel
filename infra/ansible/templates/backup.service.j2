@@ -1,0 +1,11 @@
+[Unit]
+Description={{ app_name }} PostgreSQL backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/{{ app_name }}-backup-postgres
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

@@ -1,0 +1,10 @@
+---
+roles:
+  - name: geerlingguy.docker
+    version: 7.4.7
+
+collections:
+  - name: ansible.posix
+    version: 2.1.0
+  - name: community.general
+    version: 11.3.0

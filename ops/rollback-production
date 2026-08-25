@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+: "${DEPLOY_HOST:?DEPLOY_HOST is required}"
+: "${APP_HOST:?APP_HOST is required}"
+: "${DEPLOY_REVERB_HOST:?DEPLOY_REVERB_HOST is required}"
+
+version="${1:?Usage: ops/rollback-production <image-version>}"
+
+kamal rollback "$version"
+kamal rollback \
+  --config-file=config/deploy.reverb.yml \
+  "$version"
+
+APP_URL="https://$APP_HOST" \
+REVERB_URL="https://$DEPLOY_REVERB_HOST" \
+  "$(dirname "$0")/verify-production"

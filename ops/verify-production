@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+: "${APP_URL:?APP_URL is required}"
+
+app_url="${APP_URL%/}"
+curl_options=(--fail --silent --show-error --retry 8 --retry-delay 3 --retry-all-errors)
+
+curl "${curl_options[@]}" "$app_url/up" >/dev/null
+
+readiness="$(curl "${curl_options[@]}" "$app_url/ready")"
+jq -e '
+  .status == "ready"
+  and .checks.database == true
+  and .checks.cache == true
+  and .checks.storage == true
+' <<< "$readiness" >/dev/null
+
+homepage="$(curl "${curl_options[@]}" "$app_url/")"
+grep -Fq '"component":"welcome"' <<< "$homepage"
+
+login="$(curl "${curl_options[@]}" "$app_url/login")"
+grep -Fq '"component":"auth\/login"' <<< "$login"
+
+archive_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$app_url/archive")"
+[[ "$archive_status" == "302" ]] || {
+  echo "Expected /archive to redirect unauthenticated traffic; received HTTP $archive_status." >&2
+  exit 1
+}
+
+if [[ -n "${REVERB_URL:-}" ]]; then
+  reverb_url="${REVERB_URL%/}"
+  curl "${curl_options[@]}" "$reverb_url/up" >/dev/null
+fi
+curl "${curl_options[@]}" --max-time 10 "$app_url/conformance/sse" | grep -q 'event: done'
+
+printf 'Production fidelity checks passed for %s\n' "$app_url"

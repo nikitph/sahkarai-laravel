@@ -1,6 +1,7 @@
 # Dedicated long-running video queue worker. This image adds the Node,
 # Chromium and FFmpeg media toolchain without bloating the web runtime.
 service: sahkarai-laravel-video
+minimum_version: 2.6.1
 image: nikitph/sahkarai-laravel-video
 primary_role: worker
 
@@ -16,7 +17,7 @@ builder:
 servers:
   worker:
     hosts:
-      - 168.144.27.66
+      - <%= ENV.fetch("DEPLOY_HOST") %>
     cmd: php artisan queue:work --queue=video --tries=2 --sleep=2 --timeout=3600 --max-time=7200
     proxy: false
 
@@ -55,6 +56,6 @@ volumes:
   - "sahkarai_storage:/var/www/html/storage/app"
 
 ssh:
-  user: root
+  user: <%= ENV.fetch("DEPLOY_USER", "deploy") %>
   keys:
     - ~/.ssh/sahkarai_laravel_deploy

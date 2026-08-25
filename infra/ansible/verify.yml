@@ -1,0 +1,42 @@
+---
+- name: Verify the configured Laravel host
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Confirm Docker is active
+      ansible.builtin.command: docker info
+      changed_when: false
+
+    - name: Confirm application liveness
+      ansible.builtin.uri:
+        url: "https://{{ app_host }}/up"
+        status_code: 200
+        return_content: true
+      delegate_to: localhost
+      become: false
+
+    - name: Confirm application dependencies are ready
+      ansible.builtin.uri:
+        url: "https://{{ app_host }}/ready"
+        status_code: 200
+        return_content: true
+      register: readiness
+      delegate_to: localhost
+      become: false
+
+    - name: Validate readiness response
+      ansible.builtin.assert:
+        that:
+          - readiness.json.status == "ready"
+          - readiness.json.checks.database
+          - readiness.json.checks.cache
+          - readiness.json.checks.storage
+        quiet: true
+
+    - name: Confirm Reverb liveness
+      ansible.builtin.uri:
+        url: "https://{{ reverb_host }}/up"
+        status_code: 200
+      delegate_to: localhost
+      become: false

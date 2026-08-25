@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+source "/etc/{{ app_name }}/backup.env"
+
+if ! restic snapshots >/dev/null 2>&1; then
+  restic init
+fi
+
+dump="{{ backup_working_directory }}/postgres.dump"
+trap 'rm -f "$dump"' EXIT
+
+docker exec \
+  -e PGPASSWORD="$POSTGRES_PASSWORD" \
+  "{{ postgres_container }}" \
+  pg_dump \
+    --username="{{ postgres_username }}" \
+    --dbname="{{ postgres_database }}" \
+    --format=custom \
+  > "$dump"
+
+restic backup "$dump" \
+  --host="{{ inventory_hostname }}" \
+  --tag=postgres \
+  --tag="{{ app_name }}"
+
+restic forget \
+  --host="{{ inventory_hostname }}" \
+  --tag=postgres \
+  --keep-daily=7 \
+  --keep-weekly=5 \
+  --keep-monthly=12 \
+  --prune

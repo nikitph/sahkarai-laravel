@@ -5,6 +5,7 @@
 #
 # Deploy: kamal deploy -c config/deploy.reverb.yml --version=<version> --skip-push
 service: sahkarai-laravel-reverb
+minimum_version: 2.6.1
 image: nikitph/sahkarai-laravel-reverb
 
 registry:
@@ -20,12 +21,12 @@ servers:
   # role must be "web" for kamal-proxy to route to it
   web:
     hosts:
-      - 168.144.27.66
+      - <%= ENV.fetch("DEPLOY_HOST") %>
     cmd: php artisan reverb:start --host=0.0.0.0 --port=8080
 
 proxy:
   ssl: true
-  host: ws.168.144.27.66.sslip.io
+  host: <%= ENV.fetch("DEPLOY_REVERB_HOST") %>
   app_port: 8080
   healthcheck:
     path: /up          # Reverb answers /up with 200 — verified
@@ -63,6 +64,6 @@ env:
     - REVERB_APP_SECRET
 
 ssh:
-  user: root
+  user: <%= ENV.fetch("DEPLOY_USER", "deploy") %>
   keys:
     - ~/.ssh/sahkarai_laravel_deploy

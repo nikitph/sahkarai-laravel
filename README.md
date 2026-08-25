@@ -76,6 +76,11 @@ The specs mention Supabase sessions, dormant TOTP, and database RLS. This applic
 
 The Dockerfile produces a lean immutable application target without Node, development dependencies, or `.env`, plus a separate `video-runtime` target containing Node, Chromium, FFmpeg and the pinned HyperFrames renderer. Kamal runs the application image as web, worker, scheduler, and Reverb roles; long-running explainer renders use the isolated video worker. The DigitalOcean configuration is under `config/deploy.yml`, `config/deploy.reverb.yml`, and `config/deploy.video.yml`.
 
+OpenTofu provisions DigitalOcean, Ansible configures the Docker host, and a
+verified merge to `main` drives the protected production workflow. Read
+[Reproducible production deployment](docs/DEPLOYMENT-AUTOMATION.md) before
+changing infrastructure, deployment secrets, storage, or recovery behavior.
+
 ```bash
 kamal accessory boot redis
 kamal deploy --version=<version> --skip-push

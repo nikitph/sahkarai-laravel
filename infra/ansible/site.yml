@@ -1,0 +1,205 @@
+---
+- name: Configure a Laravel container host
+  hosts: all
+  become: true
+
+  pre_tasks:
+    - name: Validate required host variables
+      ansible.builtin.assert:
+        that:
+          - app_name | length > 0
+          - service_name | length > 0
+          - deploy_user | length > 0
+          - app_host | length > 0
+          - reverb_host | length > 0
+        quiet: true
+
+    - name: Refresh apt metadata
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install host packages
+      ansible.builtin.apt:
+        name: "{{ host_packages }}"
+        state: present
+
+    - name: Create the deployment user
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Install the deployment SSH public key
+      ansible.posix.authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ lookup('env', 'DEPLOY_SSH_PUBLIC_KEY') }}"
+        state: present
+      when: lookup('env', 'DEPLOY_SSH_PUBLIC_KEY') | length > 0
+
+  roles:
+    - role: geerlingguy.docker
+
+  tasks:
+    - name: Set the server timezone
+      community.general.timezone:
+        name: "{{ server_timezone }}"
+
+    - name: Enable automatic security upgrades
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: Allow SSH through the host firewall
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow HTTP through the host firewall
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Allow HTTPS through the host firewall
+      community.general.ufw:
+        rule: allow
+        port: "443"
+        proto: tcp
+
+    - name: Enable the host firewall
+      community.general.ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Enable and start fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: started
+        enabled: true
+
+    - name: Require SSH keys and prohibit password authentication
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-laravel-deployment.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitEmptyPasswords no
+          PermitRootLogin prohibit-password
+      notify: Restart SSH
+
+    - name: Create application operations directory
+      ansible.builtin.file:
+        path: "/etc/{{ app_name }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Create backup working directory
+      ansible.builtin.file:
+        path: "{{ backup_working_directory }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      when: backup_enabled | bool
+
+    - name: Validate backup secrets
+      ansible.builtin.assert:
+        that:
+          - backup_restic_repository | default('') | length > 0
+          - backup_restic_password | default('') | length > 0
+          - backup_s3_access_key | default('') | length > 0
+          - backup_s3_secret_key | default('') | length > 0
+          - postgres_password | default('') | length > 0
+        fail_msg: "Backup credentials must be supplied through Ansible Vault or CI secrets."
+        quiet: true
+      when: backup_enabled | bool
+
+    - name: Install backup environment
+      ansible.builtin.template:
+        src: backup.env.j2
+        dest: "/etc/{{ app_name }}/backup.env"
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      when: backup_enabled | bool
+
+    - name: Install database backup command
+      ansible.builtin.template:
+        src: backup-postgres.sh.j2
+        dest: "/usr/local/sbin/{{ app_name }}-backup-postgres"
+        owner: root
+        group: root
+        mode: "0750"
+      when: backup_enabled | bool
+
+    - name: Install database restore command
+      ansible.builtin.template:
+        src: restore-postgres.sh.j2
+        dest: "/usr/local/sbin/{{ app_name }}-restore-postgres"
+        owner: root
+        group: root
+        mode: "0750"
+      when: backup_enabled | bool
+
+    - name: Allow the deployment user to run an on-demand backup
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ app_name }}-backup"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+        content: |
+          {{ deploy_user }} ALL=(root) NOPASSWD: /usr/local/sbin/{{ app_name }}-backup-postgres
+      when: backup_enabled | bool
+
+    - name: Install backup systemd service
+      ansible.builtin.template:
+        src: backup.service.j2
+        dest: "/etc/systemd/system/{{ app_name }}-backup.service"
+        owner: root
+        group: root
+        mode: "0644"
+      when: backup_enabled | bool
+      notify: Reload systemd
+
+    - name: Install backup systemd timer
+      ansible.builtin.template:
+        src: backup.timer.j2
+        dest: "/etc/systemd/system/{{ app_name }}-backup.timer"
+        owner: root
+        group: root
+        mode: "0644"
+      when: backup_enabled | bool
+      notify: Reload systemd
+
+    - name: Enable the backup timer
+      ansible.builtin.systemd_service:
+        name: "{{ app_name }}-backup.timer"
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: backup_enabled | bool
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: Reload systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true

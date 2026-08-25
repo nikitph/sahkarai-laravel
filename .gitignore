@@ -5,6 +5,12 @@
 /video-pipeline/output
 /conformance/node_modules
 /.kamal/secrets
+/infra/ansible/inventory.yml
+/infra/tofu/.terraform/
+/infra/tofu/*.tfplan
+/infra/tofu/terraform.tfstate
+/infra/tofu/terraform.tfstate.*
+/output/deployment/
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tofu_dir="${TOFU_DIR:-$root/infra/tofu}"
+inventory="${ANSIBLE_INVENTORY:-$root/infra/ansible/inventory.yml}"
+
+deployment_host="$(tofu -chdir="$tofu_dir" output -raw deployment_host)"
+app_host="$(tofu -chdir="$tofu_dir" output -raw app_host)"
+reverb_host="$(tofu -chdir="$tofu_dir" output -raw reverb_host)"
+
+umask 077
+{
+  echo "---"
+  echo "all:"
+  echo "  hosts:"
+  echo "    production:"
+  echo "      ansible_host: \"$deployment_host\""
+  echo "      ansible_user: root"
+  echo "      app_host: \"$app_host\""
+  echo "      reverb_host: \"$reverb_host\""
+} > "$inventory"
+
+printf '%s\n' "$inventory"

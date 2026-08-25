@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./install /path/to/laravel-repository APP_SLUG GITHUB_OWNER [DISPLAY_NAME]
+
+Example:
+  ./install ../another-app cooperative-portal acme "Cooperative Portal"
+EOF
+}
+
+target="${1:-}"
+app_slug="${2:-}"
+github_owner="${3:-}"
+display_name="${4:-$app_slug}"
+
+if [[ -z "$target" || -z "$app_slug" || -z "$github_owner" ]]; then
+  usage >&2
+  exit 2
+fi
+
+if [[ ! "$app_slug" =~ ^[a-z][a-z0-9-]+$ ]]; then
+  echo "APP_SLUG must contain lowercase letters, numbers, and hyphens." >&2
+  exit 2
+fi
+
+target="$(cd "$target" && pwd)"
+kit_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+payload="$kit_root/payload"
+
+if [[ ! -f "$target/artisan" || ! -f "$target/composer.json" ]]; then
+  echo "$target is not a Laravel repository." >&2
+  exit 2
+fi
+
+if [[ ! -d "$payload" ]]; then
+  echo "The deployment kit payload is missing." >&2
+  exit 2
+fi
+
+if [[ "${FORCE_INSTALL:-false}" != "true" ]]; then
+  while IFS= read -r -d '' source; do
+    relative="${source#"$payload/"}"
+    if [[ -e "$target/$relative" ]]; then
+      echo "$target/$relative already exists." >&2
+      echo "Review or move it, or set FORCE_INSTALL=true to overwrite kit files." >&2
+      exit 2
+    fi
+  done < <(find "$payload" -type f -print0)
+fi
+
+cp -R "$payload/." "$target/"
+
+export KIT_APP_SLUG="$app_slug"
+export KIT_GITHUB_OWNER="$github_owner"
+export KIT_DISPLAY_NAME="$display_name"
+
+while IFS= read -r -d '' file; do
+  perl -0pi -e '
+    s/__APP_SLUG__/$ENV{KIT_APP_SLUG}/g;
+    s/__GITHUB_OWNER__/$ENV{KIT_GITHUB_OWNER}/g;
+    s/__APP_DISPLAY_NAME__/$ENV{KIT_DISPLAY_NAME}/g;
+  ' "$file"
+done < <(
+  find "$target/infra" "$target/ops" "$target/config" \
+    "$target/.github" "$target/docs" \
+    -type f -print0
+)
+
+chmod +x "$target"/ops/*
+
+cat <<EOF
+Deployment automation installed into:
+  $target
+
+Next:
+  1. Read docs/DEPLOYMENT-AUTOMATION.md and docs/ONBOARDING.md.
+  2. Review config/deploy.yml and remove application-specific secrets.
+  3. Add or adapt /ready and ops/verify-production.
+  4. Configure protected GitHub Environments, variables, and secrets.
+  5. Run the infrastructure review workflow before the first apply.
+EOF

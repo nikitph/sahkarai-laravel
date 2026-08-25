@@ -17,6 +17,7 @@ use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\Ops\CreditAdjustmentController;
 use App\Http\Controllers\Ops\IssueTriageController;
 use App\Http\Controllers\Ops\OpsDashboardController;
+use App\Http\Controllers\ReadinessController;
 use App\Http\Controllers\Webhooks\RazorpayWebhookController;
 use App\Jobs\AlwaysFails;
 use App\Jobs\RecordOrganizationActivity;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+Route::get('ready', ReadinessController::class)->name('ready');
 Route::get('locale/{locale}', function (string $locale) {
     abort_unless(in_array($locale, ['en', 'hi', 'gu', 'mr'], true), 404);
     session(['locale' => $locale]);

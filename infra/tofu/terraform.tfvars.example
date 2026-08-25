@@ -1,0 +1,12 @@
+environment          = "production"
+project_name         = "sahkarai"
+region               = "blr1"
+droplet_name         = "sahkarai-production"
+droplet_size         = "s-2vcpu-4gb"
+droplet_image        = "ubuntu-24-04-x64"
+ssh_key_fingerprints = ["replace-with-digitalocean-key-fingerprint"]
+ssh_allowed_cidrs    = ["replace-with-your-public-ip/32"]
+
+enable_droplet_backups = true
+create_spaces_bucket   = false
+spaces_bucket_name     = "replace-with-globally-unique-private-bucket"
