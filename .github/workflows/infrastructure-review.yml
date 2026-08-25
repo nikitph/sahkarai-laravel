@@ -52,7 +52,9 @@ jobs:
             ops/rollback-production ops/verify-production
 
   plan:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && vars.INFRASTRUCTURE_AUTOMATION_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production-infrastructure-plan
     env:
