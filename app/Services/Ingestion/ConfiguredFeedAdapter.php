@@ -28,7 +28,7 @@ class ConfiguredFeedAdapter implements SourceAdapter
         }
 
         $body = Http::accept('application/rss+xml, application/atom+xml, application/xml, text/xml')
-            ->withUserAgent((string) config('sahkarai.ingestion.user_agent'))
+            ->withUserAgent((string) config('sahkarai.ingestion.browser_user_agent'))
             ->when(
                 $this->source() === RegulatorySource::IncomeTax,
                 fn ($request) => $request->withHeaders(['Referer' => 'https://www.incometaxindia.gov.in/tax-feeds']),

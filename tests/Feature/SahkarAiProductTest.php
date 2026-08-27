@@ -528,7 +528,7 @@ class SahkarAiProductTest extends TestCase
                 'applicability_tags' => $tags,
                 'published_at' => now(),
             ]);
-            $document->versions()->create([
+            $version = $document->versions()->create([
                 'version' => 1,
                 'status' => 'published',
                 'extraction_status' => 'ok',
@@ -537,6 +537,17 @@ class SahkarAiProductTest extends TestCase
                 'mime_type' => 'text/plain',
                 'sha256' => hash('sha256', $title),
                 'acquired_at' => now(),
+            ]);
+            $version->interpretation()->create([
+                'status' => 'published',
+                'locale_payloads' => ['en' => [
+                    'locale' => 'en',
+                    'summary' => "{$title} summary",
+                    'takeaways' => ['One', 'Two', 'Three'],
+                    'glossary' => [],
+                    'deadlines' => [],
+                ]],
+                'published_at' => now(),
             ]);
         }
 
@@ -811,16 +822,14 @@ class SahkarAiProductTest extends TestCase
         ]);
         Storage::disk('local')->put($version->original_path, 'not extractable');
 
-        try {
-            (new ExtractDocumentText($version->id))->handle();
-            $this->fail('The extraction job should fail for an unsupported original.');
-        } catch (RuntimeException) {
-            $version->refresh();
-            $this->assertSame('extraction_failed', $version->status);
-            $this->assertSame('failed', $version->extraction_status);
-            $this->assertSame('pending', $version->interpretation_status);
-            Queue::assertNotPushed(GenerateInterpretation::class);
-        }
+        (new ExtractDocumentText($version->id))->handle();
+
+        $version->refresh();
+        $this->assertSame('needs_review', $version->status);
+        $this->assertSame('needs_review', $version->extraction_status);
+        $this->assertNotNull($version->needs_review_at);
+        $this->assertSame('pending', $version->interpretation_status);
+        Queue::assertNotPushed(GenerateInterpretation::class);
     }
 
     public function test_interpretation_generation_records_a_separate_published_status_for_all_locales(): void
@@ -1005,7 +1014,7 @@ class SahkarAiProductTest extends TestCase
         $this->assertSame(DocumentType::Other, $candidate->documentType);
         $this->assertNotSame('', $candidate->downloadUrl);
         Http::assertSent(fn ($request) => $request->hasHeader('Accept', 'application/rss+xml, application/atom+xml, application/xml, text/xml')
-            && $request->hasHeader('User-Agent', (string) config('sahkarai.ingestion.user_agent')));
+            && $request->hasHeader('User-Agent', (string) config('sahkarai.ingestion.browser_user_agent')));
     }
 
     public function test_income_tax_feed_uses_the_official_subscription_referer(): void
@@ -1063,6 +1072,17 @@ class SahkarAiProductTest extends TestCase
             'sha256' => hash('sha256', (string) Str::uuid()),
             'extracted_text' => 'Revised source.',
             'acquired_at' => now(),
+        ]);
+        $revision->interpretation()->create([
+            'status' => 'published',
+            'locale_payloads' => ['en' => [
+                'locale' => 'en',
+                'summary' => 'Revised English summary.',
+                'takeaways' => ['One', 'Two', 'Three'],
+                'glossary' => [],
+                'deadlines' => [],
+            ]],
+            'published_at' => now(),
         ]);
         $user = User::factory()->tier1()->create();
         $user->subscription()->create([

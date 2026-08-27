@@ -27,7 +27,7 @@ Takeaways must contain 3-7 concrete items, and glossary entries should only defi
 
 Set effective_date only when the source explicitly states that the document, direction, or requirement takes effect, becomes effective, or applies from a specific date. Otherwise return null. Never infer an effective date from an Act year, publication or signature date, filing window, approval expiry, compliance deadline, or order-disposal deadline. This is educational information, not legal advice.
 
-Extract document metadata conservatively. Preserve the official document title and reference number exactly rather than translating them. Set regulatory_source only when the issuer is clearly RBI, Income Tax, or GST. Set published_date only for the document's explicit issue, publication, or signature date. Return null for any metadata that the source does not support.
+Extract document metadata conservatively. Preserve the official document title and reference number exactly rather than translating them. Set regulatory_source only when the issuer is clearly RBI, Income Tax, GST, CBIC, or NABARD. Set published_date only for the document's explicit issue, publication, or signature date. Return null for any metadata that the source does not support.
 PROMPT;
     }
 
@@ -54,7 +54,7 @@ PROMPT;
                 ->required(),
             'document_type' => $schema->string()->enum(['master_direction', 'circular', 'notification', 'press_release', 'faq', 'other'])->required(),
             'document_title' => $schema->string()->nullable()->required(),
-            'regulatory_source' => $schema->string()->enum(['rbi', 'income_tax', 'gst'])->nullable()->required(),
+            'regulatory_source' => $schema->string()->enum(['rbi', 'income_tax', 'gst', 'cbic', 'nabard'])->nullable()->required(),
             'reference_number' => $schema->string()->nullable()->required(),
             'published_date' => $schema->string()
                 ->description('The explicit issue, publication, or signature date in YYYY-MM-DD format; null when unsupported.')

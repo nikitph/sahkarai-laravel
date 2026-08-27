@@ -25,7 +25,7 @@ class OpsDashboardController extends Controller
                 'last_failure' => PollRun::query()->where('source', $source)->where('status', 'failed')->latest('completed_at')->first(),
             ]),
             'counts' => [
-                'extractionFailures' => DocumentVersion::query()->where('extraction_status', 'failed')->count(),
+                'extractionFailures' => DocumentVersion::query()->whereIn('extraction_status', ['failed', 'needs_review'])->count(),
                 'interpretationFailures' => DocumentVersion::query()->where('interpretation_status', 'failed')->count(),
                 'openIssues' => IssueReport::query()->where('status', 'open')->count(),
                 'openAlerts' => OpsAlert::query()->whereNull('resolved_at')->count(),

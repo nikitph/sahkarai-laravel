@@ -4,7 +4,9 @@
 
 The platform regulatory pipeline is:
 
-`scheduled poll → source adapter → acquire immutable original → extract text → AI interpretation → publish → notify eligible users`
+`scheduled poll / manifest import → source adapter → acquire immutable original → native extraction → Kimi fallback when needed → AI interpretation → publish English → retry remaining locales → notify eligible users`
+
+Native and Kimi extraction attempts are auditable rows. Terminal failures retain their immutable originals in an operator-only `needs_review` state. English is the publication threshold; missing supported translations remain a visible `partial` interpretation with English fallback and three total attempts per locale. A failed newer revision cannot displace the latest previously published revision.
 
 Published archive interpretations also enter the explainer pipeline:
 
@@ -36,7 +38,8 @@ Tier 2 and Tier 3 users can view explainer videos. Public archive versions queue
 - `uploaded_by_user_id = null` identifies the public platform corpus; a non-null owner makes the entire document aggregate private.
 - Original bytes are stored once at a canonical path and identified by SHA-256.
 - Each changed byte sequence creates a new immutable `document_version`; revisions link with `supersedes_id`.
-- A document version has at most one interpretation row. Locale prose is generated independently with bounded retries; applicability, effective date, document type, and deadlines are stored once as locale-independent metadata.
+- A document version has at most one interpretation row. Locale prose is generated independently with three attempts per locale; validated English makes the version publishable while other locales may remain partial. Applicability, effective date, document type, and deadlines are stored once as locale-independent metadata.
+- Every version begins with native extraction. Only platform-owned PDFs fall back to Kimi; private uploads never cross that provider boundary. Every attempt records method, provider, outcome, timestamps, and safe provider metadata.
 - A document version has at most one canonical explainer video. Its MP4 and build manifest share one content-addressed storage prefix, and rendering state never changes chat availability.
 - A chat is permanently bound to one user and one document version.
 - Chat messages and credit-ledger entries are append-only. A user message and its one-credit debit happen atomically and idempotently.

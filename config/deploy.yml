@@ -32,7 +32,7 @@ servers:
   worker:
     hosts:
       - <%= ENV.fetch("DEPLOY_HOST") %>
-    cmd: php artisan queue:work --tries=3 --sleep=1 --timeout=180 --max-time=3600
+    cmd: php artisan queue:work --tries=3 --sleep=1 --timeout=600 --max-time=3600
     proxy: false
   scheduler:
     hosts:
@@ -79,10 +79,14 @@ env:
     REDIS_CLIENT: phpredis
     REDIS_HOST: sahkarai-laravel-redis
     REDIS_PORT: "6379"
-    REDIS_QUEUE_RETRY_AFTER: "240"
+    REDIS_QUEUE_RETRY_AFTER: "660"
 
     REGULATORY_USER_AGENT: "SahkarAI/1.0 (+https://<%= ENV.fetch("APP_HOST") %>)"
+    REGULATORY_BROWSER_USER_AGENT: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36"
     INCOME_TAX_FEED_URL: https://wmstatic-prd.incometaxindia.gov.in/circular-rss-feed/-/asset_publisher/bxhj/rss
+    KIMI_OCR_ENABLED: "true"
+    KIMI_OCR_TIMEOUT: "180"
+    KIMI_OCR_ATTEMPTS: "3"
 
     BROADCAST_CONNECTION: reverb
     REVERB_APP_ID: conformance
@@ -101,6 +105,7 @@ env:
     - DB_PASSWORD
     - REVERB_APP_SECRET
     - DEEPSEEK_API_KEY
+    - KIMI_API_KEY
     - RAZORPAY_KEY_ID
     - RAZORPAY_KEY_SECRET
     - RAZORPAY_WEBHOOK_SECRET

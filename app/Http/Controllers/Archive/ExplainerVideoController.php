@@ -33,7 +33,8 @@ class ExplainerVideoController extends Controller
     {
         $this->authorize('view', $document);
         abort_unless($request->user()->canUseExplainerVideos(), 403);
-        abort_unless($video->version()->where('regulatory_document_id', $document->getKey())->exists(), 404);
+        $version = $video->version()->where('regulatory_document_id', $document->getKey())->first();
+        abort_unless($version && $document->isVersionVisibleTo($version, $request->user()), 404);
         abort_unless($video->status === ExplainerVideoStatus::Ready && $video->storage_disk && $video->video_path, 404);
 
         return Storage::disk($video->storage_disk)->response(

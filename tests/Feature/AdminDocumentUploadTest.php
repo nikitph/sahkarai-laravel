@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Interpretations\GenerateLocaleInterpretation;
+use App\Actions\Notifications\NotifyRegulatoryUpdate;
 use App\Ai\Agents\RegulatoryInterpretationAgent;
 use App\Enums\Applicability;
 use App\Enums\DocumentType;
@@ -114,7 +115,7 @@ class AdminDocumentUploadTest extends TestCase
         $this->assertDatabaseCount('regulatory_documents', 1);
     }
 
-    public function test_admin_upload_stays_private_until_text_extraction_succeeds(): void
+    public function test_admin_upload_stays_private_until_english_interpretation_succeeds(): void
     {
         Storage::fake('local');
         Queue::fake();
@@ -134,8 +135,26 @@ class AdminDocumentUploadTest extends TestCase
 
         (new ExtractDocumentText($version->getKey()))->handle();
 
-        $this->assertTrue($document->refresh()->is_public);
+        $this->assertFalse($document->refresh()->is_public);
         Queue::assertPushed(GenerateInterpretation::class);
+        $this->actingAs($member)->get(route('archive.show', $document))->assertForbidden();
+
+        RegulatoryInterpretationAgent::fake(collect(SupportedLocale::cases())->map(fn (SupportedLocale $locale) => [
+            'locale' => $locale->value,
+            'summary' => implode(' ', array_fill(0, 150, 'word')),
+            'takeaways' => ['Review the circular.', 'Assign an owner.', 'Retain evidence.'],
+            'glossary' => [],
+            'deadlines' => [],
+            'applicability_tags' => ['generic'],
+            'effective_date' => null,
+            'document_type' => 'circular',
+        ])->all())->preventStrayPrompts();
+        (new GenerateInterpretation($version->getKey()))->handle(
+            app(GenerateLocaleInterpretation::class),
+            app(NotifyRegulatoryUpdate::class),
+        );
+
+        $this->assertTrue($document->refresh()->is_public);
         $this->actingAs($member)->get(route('archive.show', $document))->assertOk();
         $this->actingAs($member)->get(route('archive.index'))->assertSee('Pending shared circular');
     }

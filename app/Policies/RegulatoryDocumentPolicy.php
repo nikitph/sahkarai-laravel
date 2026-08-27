@@ -13,7 +13,8 @@ class RegulatoryDocumentPolicy
             return $document->uploaded_by_user_id === $user->getKey();
         }
 
-        return $document->is_public || $user->isAdmin();
+        return $user->isAdmin()
+            || ($document->is_public && $document->publishedVersions()->exists());
     }
 
     public function upload(User $user): bool

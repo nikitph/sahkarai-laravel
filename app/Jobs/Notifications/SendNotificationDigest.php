@@ -38,6 +38,8 @@ class SendNotificationDigest implements ShouldQueue
                         'rbi' => 'source_rbi',
                         'income_tax' => 'source_income_tax',
                         'gst' => 'source_gst',
+                        'cbic' => 'source_cbic',
+                        'nabard' => 'source_nabard',
                         'user_upload' => null,
                     };
                     if ($sourceField === null

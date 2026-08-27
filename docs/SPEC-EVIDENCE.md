@@ -39,10 +39,10 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 | `i18n/ui_localization` | 4 | persisted `SupportedLocale` and en/hi/gu/mr client bundle; locale update/display tests |
 | `ingestion/acquisition_storage` | 5 | `AcquireDocument`, checksum dedupe, durable originals and canonical IDs; acquisition tests |
 | `ingestion/discovery_dedup` | 4 | source adapter contract, unique source identity and auditable malformed candidates; poll tests |
-| `ingestion/extraction` | 4 | idempotent extractor, durable text artifact, retry/terminal status; extraction tests |
-| `ingestion/historical_backfill` | 3 | one-year backfill command, source jobs and notification suppression; backfill/non-trigger tests |
+| `ingestion/extraction` | 4 | native-first extractor, Kimi PDF fallback, durable text/checksum artifact, attempt audit, retry/terminal review status; resilient-ingestion tests |
+| `ingestion/historical_backfill` | 3 | integrity-checked idempotent six-year manifest importer, source jobs and notification suppression; importer/backfill tests |
 | `ingestion/interpretation_generation` | 7 | Laravel AI SDK structured agent, per-locale attempts/retries and separate status; AI fake tests |
-| `ingestion/polling` | 7 | twice-daily source schedules, partial/failed runs and three-failure alert; poll tests and schedule inspection |
+| `ingestion/polling` | 7 | twice-daily RBI/Income Tax/GST/CBIC/NABARD schedules, source-specific official-site adapters, partial/failed runs and three-failure alert; poll/adapter tests and schedule inspection |
 | `ingestion/versioning_revisions` | 6 | checksum-based linked versions and prior-view notification eligibility; revision tests |
 | `interpretation/interpretation_locale_display` | 4 | requested locale selection without profile mutation; locale switching tests |
 | `interpretation/interpretation_locale_fallback` | 3 | English fallback and explicit fallback marker; locale fallback tests |
