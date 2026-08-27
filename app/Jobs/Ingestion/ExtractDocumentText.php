@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Ingestion;
 
-use App\Jobs\Interpretations\GenerateInterpretation;
+use App\Actions\Ingestion\CompleteTextExtraction;
 use App\Models\DocumentVersion;
 use App\Support\Documents\ExtractedTextNormalizer;
 use App\Support\Documents\ReadablePdf;
@@ -16,17 +16,21 @@ class ExtractDocumentText implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $tries = 1;
 
     public function __construct(public readonly int $documentVersionId) {}
 
-    public function handle(?ReadablePdf $readablePdf = null, ?ExtractedTextNormalizer $normalizer = null): void
-    {
+    public function handle(
+        ?CompleteTextExtraction $complete = null,
+        ?ReadablePdf $readablePdf = null,
+        ?ExtractedTextNormalizer $normalizer = null,
+    ): void {
+        $complete ??= app(CompleteTextExtraction::class);
         $readablePdf ??= app(ReadablePdf::class);
         $normalizer ??= app(ExtractedTextNormalizer::class);
         $version = DocumentVersion::findOrFail($this->documentVersionId);
         if ($version->extracted_at !== null && filled($version->extracted_text)) {
-            $path = $version->extracted_path ?: $this->artifactPath($version->original_path);
+            $path = $version->extracted_path ?: $complete->artifactPath($version->original_path);
             $disk = Storage::disk(config('sahkarai.ingestion.storage_disk'));
             if (! $disk->exists($path)) {
                 if (! $disk->put($path, $version->extracted_text)) {
@@ -40,6 +44,17 @@ class ExtractDocumentText implements ShouldQueue
             return;
         }
 
+        $attemptNumber = (int) $version->extractionAttempts()->where('method', 'native')->max('attempt') + 1;
+        $attempt = $version->extractionAttempts()->create([
+            'method' => 'native',
+            'provider' => 'smalot/pdfparser',
+            'model' => null,
+            'status' => 'processing',
+            'attempt' => $attemptNumber,
+            'started_at' => now(),
+        ]);
+        $version->update(['status' => 'native_processing', 'extraction_status' => 'native_processing']);
+
         try {
             $contents = Storage::disk(config('sahkarai.ingestion.storage_disk'))->get($version->original_path);
             $text = match ($version->mime_type) {
@@ -48,43 +63,44 @@ class ExtractDocumentText implements ShouldQueue
                 'text/plain' => $contents,
                 default => throw new RuntimeException("Unsupported document type: {$version->mime_type}"),
             };
-            $text = $normalizer->normalize($text);
-            if ($text === '') {
-                throw new RuntimeException('Text extraction produced no content.');
+            $complete->handle($version, $normalizer->normalize($text), 'native');
+            $attempt->update([
+                'status' => 'ok',
+                'metadata' => ['extracted_characters' => mb_strlen($text)],
+                'completed_at' => now(),
+            ]);
+        } catch (Throwable $exception) {
+            $attempt->update([
+                'status' => 'failed',
+                'error' => $exception->getMessage(),
+                'completed_at' => now(),
+            ]);
+
+            if ($this->shouldUseKimi($version)) {
+                $version->update([
+                    'status' => 'kimi_pending',
+                    'extraction_status' => 'kimi_pending',
+                    'extraction_error' => $exception->getMessage(),
+                ]);
+                ExtractDocumentTextWithKimi::dispatch($version->getKey())->afterCommit();
+
+                return;
             }
 
-            $extractedPath = $this->artifactPath($version->original_path);
-            if (! Storage::disk(config('sahkarai.ingestion.storage_disk'))->put($extractedPath, $text)) {
-                throw new RuntimeException("Unable to persist the extracted artifact at {$extractedPath}.");
-            }
             $version->update([
-                'status' => 'extracted',
-                'extraction_status' => 'ok',
-                'extracted_text' => $text,
-                'extracted_path' => $extractedPath,
-                'extracted_at' => now(),
-                'extraction_error' => null,
-            ]);
-            $version->document()
-                ->whereNotNull('ingested_by_user_id')
-                ->update(['is_public' => true]);
-            GenerateInterpretation::dispatch($version->getKey());
-        } catch (Throwable $exception) {
-            $version->update([
-                'status' => 'extraction_failed',
-                'extraction_status' => 'failed',
+                'status' => 'needs_review',
+                'extraction_status' => 'needs_review',
                 'extraction_error' => $exception->getMessage(),
+                'needs_review_at' => now(),
             ]);
-            throw $exception;
         }
     }
 
-    private function artifactPath(string $originalPath): string
+    private function shouldUseKimi(DocumentVersion $version): bool
     {
-        $relative = str_starts_with($originalPath, 'originals/')
-            ? substr($originalPath, strlen('originals/'))
-            : basename($originalPath);
-
-        return 'extracted/'.preg_replace('/\.[^.\/]+$/', '', $relative).'.txt';
+        return $version->mime_type === 'application/pdf'
+            && $version->document()->whereNull('uploaded_by_user_id')->exists()
+            && (bool) config('sahkarai.ingestion.kimi.enabled')
+            && filled(config('sahkarai.ingestion.kimi.api_key'));
     }
 }

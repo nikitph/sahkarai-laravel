@@ -16,6 +16,13 @@ class InterpretationExportController extends Controller
         abort_unless(in_array($format, ['md', 'pdf'], true), 422, 'export_format_invalid');
         $interpretation->load('version.document');
         $this->authorize('view', $interpretation->version->document);
+        abort_unless(
+            $interpretation->version->document->isVersionVisibleTo($interpretation->version, $request->user())
+                && in_array($interpretation->status, ['published', 'partial'], true)
+                && $interpretation->published_at !== null
+                && isset($interpretation->locale_payloads['en']),
+            404,
+        );
         $payload = $interpretation->payloadFor($request->user()->locale->value);
         abort_unless((bool) $payload, 404, 'Interpretation not available for this document.');
         $data = ['document' => $interpretation->version->document, 'interpretation' => $payload, 'meta' => $interpretation];

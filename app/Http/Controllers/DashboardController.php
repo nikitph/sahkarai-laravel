@@ -26,7 +26,7 @@ class DashboardController extends Controller
             ],
             'recentDocuments' => RegulatoryDocument::query()
                 ->visibleTo($user)
-                ->with('latestVersion')
+                ->with(['latestVersion', 'latestPublishedVersion'])
                 ->latest('published_at')
                 ->limit(6)
                 ->get(['id', 'title', 'source', 'document_type', 'published_at', 'applicability']),

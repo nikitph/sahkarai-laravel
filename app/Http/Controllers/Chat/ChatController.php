@@ -29,7 +29,8 @@ class ChatController extends Controller
         $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
         $version = isset($validated['version'])
             ? $document->versions()->whereKey($validated['version'])->with('interpretation')->firstOrFail()
-            : $document->latestVersion()->with('interpretation')->firstOrFail();
+            : $document->visibleVersionFor($request->user());
+        abort_unless($version && $document->isVersionVisibleTo($version, $request->user()), 404);
         abort_unless($version->isReadyForChat(), 409, 'This document is still being processed and is not ready for chat.');
         $chat = $request->user()->chats()->create([
             'regulatory_document_id' => $document->getKey(),

@@ -149,6 +149,7 @@ Deployment:
 - `POSTGRES_PASSWORD`
 - `REVERB_APP_SECRET`
 - `DEEPSEEK_API_KEY`
+- `KIMI_API_KEY`
 - the Razorpay keys and plan IDs already listed in the workflow
 
 Durable storage and backups:

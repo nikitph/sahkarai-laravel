@@ -17,7 +17,7 @@ class ArchiveSearch
     {
         $query = RegulatoryDocument::query()
             ->visibleTo($user)
-            ->with(['latestVersion.interpretation'])
+            ->with(['latestVersion.interpretation', 'latestPublishedVersion.interpretation'])
             ->when($filters['source'] ?? null, fn (Builder $query, string $source) => $query->where('source', $source))
             ->when($filters['document_type'] ?? null, fn (Builder $query, string $type) => $query->where('document_type', $type))
             ->when($filters['applicability'] ?? null, fn (Builder $query, string $value) => $query->whereJsonContains('applicability_tags', $value))
@@ -25,11 +25,11 @@ class ArchiveSearch
             ->when($filters['date_to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('published_at', '<=', $date));
 
         $term = trim((string) ($filters['q'] ?? ''));
-        $postgresSearch = $term !== '' && $query->getModel()->getConnection()->getDriverName() === 'pgsql';
+        $postgresSearch = $term !== '' && $user->isAdmin() && $query->getModel()->getConnection()->getDriverName() === 'pgsql';
         if ($postgresSearch) {
             $this->applyPostgresFullText($query, $term);
         } elseif ($term !== '') {
-            $this->applyPortableSearch($query, $term);
+            $this->applyPortableSearch($query, $term, $user);
         }
 
         $paginator = $query
@@ -44,7 +44,7 @@ class ArchiveSearch
         if ($term !== '' && ! $postgresSearch) {
             $normalizedTerm = mb_strtolower(trim($term, ' "'));
             $paginator->setCollection($paginator->getCollection()->sortByDesc(
-                fn (RegulatoryDocument $document) => $this->englishScore($document, $normalizedTerm),
+                fn (RegulatoryDocument $document) => $this->englishScore($document, $normalizedTerm, $user),
             )->values());
         }
 
@@ -89,25 +89,47 @@ class ArchiveSearch
     }
 
     /** @param Builder<RegulatoryDocument> $query */
-    private function applyPortableSearch(Builder $query, string $term): void
+    private function applyPortableSearch(Builder $query, string $term, User $user): void
     {
         $quoted = str_starts_with($term, '"') && str_ends_with($term, '"');
         $terms = $quoted ? [trim($term, ' "')] : (preg_split('/\s+/', $term) ?: []);
         foreach ($terms as $word) {
             $needle = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $word).'%';
-            $query->where(function (Builder $query) use ($needle): void {
-                $query->where('title', 'like', $needle)
-                    ->orWhereHas('latestVersion', fn (Builder $version) => $version->where('extracted_text', 'like', $needle))
-                    ->orWhereHas('latestVersion.interpretation', fn (Builder $interpretation) => $interpretation
-                        ->whereRaw('CAST(locale_payloads AS TEXT) LIKE ?', [$needle]));
+            $query->where(function (Builder $query) use ($needle, $user): void {
+                $query->where('title', 'like', $needle);
+                if ($user->isAdmin()) {
+                    $query->orWhereHas('latestVersion', fn (Builder $version) => $version->where('extracted_text', 'like', $needle))
+                        ->orWhereHas('latestVersion.interpretation', fn (Builder $interpretation) => $interpretation
+                            ->whereRaw('CAST(locale_payloads AS TEXT) LIKE ?', [$needle]));
+
+                    return;
+                }
+
+                $query->orWhere(function (Builder $owned) use ($needle, $user): void {
+                    $owned->where('uploaded_by_user_id', $user->getKey())
+                        ->where(function (Builder $content) use ($needle): void {
+                            $content->whereHas('latestVersion', fn (Builder $version) => $version->where('extracted_text', 'like', $needle))
+                                ->orWhereHas('latestVersion.interpretation', fn (Builder $interpretation) => $interpretation
+                                    ->whereRaw('CAST(locale_payloads AS TEXT) LIKE ?', [$needle]));
+                        });
+                })->orWhere(function (Builder $platform) use ($needle): void {
+                    $platform->whereNull('uploaded_by_user_id')
+                        ->where(function (Builder $content) use ($needle): void {
+                            $content->whereHas('latestPublishedVersion', fn (Builder $version) => $version->where('extracted_text', 'like', $needle))
+                                ->orWhereHas('latestPublishedVersion.interpretation', fn (Builder $interpretation) => $interpretation
+                                    ->whereRaw('CAST(locale_payloads AS TEXT) LIKE ?', [$needle]));
+                        });
+                });
             });
         }
     }
 
-    private function englishScore(RegulatoryDocument $document, string $term): int
+    private function englishScore(RegulatoryDocument $document, string $term, User $user): int
     {
-        $english = $document->latestVersion?->interpretation?->locale_payloads['en'] ?? [];
-        $haystack = mb_strtolower($document->title.' '.($document->latestVersion->extracted_text ?? '').' '.json_encode($english, JSON_THROW_ON_ERROR));
+        $version = $document->visibleVersionFor($user);
+        $english = $version?->interpretation?->locale_payloads['en'] ?? [];
+        $text = $version === null ? '' : ($version->extracted_text ?? '');
+        $haystack = mb_strtolower($document->title.' '.$text.' '.json_encode($english, JSON_THROW_ON_ERROR));
 
         return str_contains($haystack, $term) ? 1 : 0;
     }

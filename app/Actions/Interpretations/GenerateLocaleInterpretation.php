@@ -45,7 +45,7 @@ class GenerateLocaleInterpretation
             'effective_date' => ['nullable', 'date_format:Y-m-d'],
             'document_type' => ['required', 'in:master_direction,circular,notification,press_release,faq,other'],
             'document_title' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'regulatory_source' => ['sometimes', 'nullable', 'in:rbi,income_tax,gst'],
+            'regulatory_source' => ['sometimes', 'nullable', 'in:rbi,income_tax,gst,cbic,nabard'],
             'reference_number' => ['sometimes', 'nullable', 'string', 'max:255'],
             'published_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
         ])->validate();

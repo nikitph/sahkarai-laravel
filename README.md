@@ -1,6 +1,6 @@
 # SahkarAI
 
-SahkarAI turns RBI, Income Tax, and GST publications into a searchable regulatory archive, localized plain-language interpretations, notifications, and document-grounded AI chats.
+SahkarAI turns RBI, Income Tax, GST, CBIC, and NABARD publications into a searchable regulatory archive, localized plain-language interpretations, notifications, and document-grounded AI chats.
 
 This repository is the product application generated from the company Laravel initializer. It runs on the frozen multi-arch `ghcr.io/nikitph/laravel-runtime:1.0.0` image with PostgreSQL, Redis queues, Reverb, and separate web/worker/scheduler roles.
 
@@ -48,9 +48,7 @@ RAZORPAY_TIER_2_PLAN_ID=
 RAZORPAY_TIER_3_PLAN_ID=
 ```
 
-Income Tax ingestion defaults to the department's official Circular RSS feed.
-Set `RBI_FEED_URL` and `GST_FEED_URL` before enabling those sources, or override
-`INCOME_TAX_FEED_URL` if the department supplies an allow-listed endpoint.
+Income Tax ingestion defaults to the department's official Circular RSS feed. RBI, CBIC, and NABARD have source-specific official-site observers. Set `GST_FEED_URL` before enabling GST, or override the documented source endpoints if a regulator supplies an allow-listed endpoint.
 Missing or unreachable sources fail visibly in `poll_runs` and the ops dashboard.
 
 ## Common commands
@@ -61,6 +59,8 @@ composer verify                     # format, static analysis, tests, and produc
 php artisan test                    # backend suite
 php artisan regulatory:backfill     # queue the 12-month source backfill
 php artisan regulatory:backfill --sync
+php artisan regulatory:archive-import /path/to/regulatory-circulars-2021-2026 --dry-run
+php artisan regulatory:extraction-retry <document-version-id>
 npm run types:check
 ```
 
@@ -95,3 +95,5 @@ After placing DeepSeek and Razorpay test credentials in the environment, run the
 ```bash
 php artisan sahkarai:providers:verify
 ```
+
+Kimi is the PDF extraction fallback, not the interpretation provider. Add `KIMI_API_KEY`, then verify it with a representative image-only PDF using `php artisan sahkarai:kimi:verify /path/to/sample.pdf`. See [Regulatory archive and resilient extraction deployment](docs/REGULATORY-INGESTION-DEPLOYMENT.md).

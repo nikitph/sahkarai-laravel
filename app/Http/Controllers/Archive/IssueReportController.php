@@ -17,7 +17,12 @@ class IssueReportController extends Controller
         $this->authorize('create', IssueReport::class);
         $interpretation->load('version.document');
         $this->authorize('view', $interpretation->version->document);
-        abort_unless(in_array($interpretation->status, ['published', 'partial'], true), 404);
+        abort_unless(
+            $interpretation->version->document->isVersionVisibleTo($interpretation->version, $request->user())
+                && in_array($interpretation->status, ['published', 'partial'], true)
+                && isset($interpretation->locale_payloads['en']),
+            404,
+        );
         $validated = $request->validate([
             'category' => ['nullable', 'in:inaccurate,mistranslation,missing_takeaway,wrong_applicability,other'],
             'locale' => ['required', Rule::enum(SupportedLocale::class)],

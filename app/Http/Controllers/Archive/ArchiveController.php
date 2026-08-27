@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentVersion;
 use App\Models\DocumentView;
 use App\Models\RegulatoryDocument;
+use App\Models\User;
 use App\Services\Archive\ArchiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -34,7 +35,7 @@ class ArchiveController extends Controller
 
         $documents = $archive->search($filters, $request->user());
         $serializedDocuments = $documents->toArray();
-        $serializedDocuments['data'] = $documents->getCollection()->map(fn (RegulatoryDocument $document) => $this->summary($document, $filters['q'] ?? null))->all();
+        $serializedDocuments['data'] = $documents->getCollection()->map(fn (RegulatoryDocument $document) => $this->summary($document, $request->user(), $filters['q'] ?? null))->all();
 
         return Inertia::render('archive/index', [
             'documents' => $serializedDocuments,
@@ -59,11 +60,12 @@ class ArchiveController extends Controller
             'locale' => ['nullable', Rule::enum(SupportedLocale::class)],
             'version' => ['nullable', 'integer', 'min:1'],
         ]);
-        $document->load(['versions.interpretation', 'versions.explainerVideo', 'latestVersion.interpretation', 'latestVersion.explainerVideo']);
+        $document->load(['versions.interpretation', 'versions.explainerVideo', 'latestVersion.interpretation', 'latestVersion.explainerVideo', 'latestPublishedVersion.interpretation', 'latestPublishedVersion.explainerVideo']);
         $version = isset($validated['version'])
             ? $document->versions->firstWhere('id', $validated['version'])
-            : $document->latestVersion;
+            : $document->visibleVersionFor($request->user());
         abort_unless($version instanceof DocumentVersion, 404);
+        abort_unless($document->isVersionVisibleTo($version, $request->user()), 404);
         DocumentView::query()->updateOrCreate(
             ['user_id' => $request->user()->getKey(), 'document_version_id' => $version->getKey()],
             ['regulatory_document_id' => $document->getKey(), 'last_viewed_at' => now()],
@@ -93,7 +95,10 @@ class ArchiveController extends Controller
                         'url' => $video->status->value === 'ready' ? route('explainer-videos.show', [$document, $video]) : null,
                     ] : null,
                 ],
-                'versions' => $document->versions->map->only(['id', 'version', 'status', 'acquired_at']),
+                'versions' => $document->versions
+                    ->filter(fn (DocumentVersion $candidate) => $document->isVersionVisibleTo($candidate, $request->user()))
+                    ->map->only(['id', 'version', 'status', 'acquired_at'])
+                    ->values(),
             ],
             'capabilities' => [
                 'interpretations' => $canInterpret,
@@ -114,7 +119,8 @@ class ArchiveController extends Controller
         $validated = $request->validate(['version' => ['nullable', 'integer', 'min:1']]);
         $version = isset($validated['version'])
             ? $document->versions()->whereKey($validated['version'])->firstOrFail()
-            : $document->latestVersion()->firstOrFail();
+            : $document->visibleVersionFor($request->user());
+        abort_unless($version instanceof DocumentVersion && $document->isVersionVisibleTo($version, $request->user()), 404);
 
         return Storage::disk(config('sahkarai.ingestion.storage_disk'))->download(
             $version->original_path,
@@ -123,10 +129,11 @@ class ArchiveController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function summary(RegulatoryDocument $document, ?string $query = null): array
+    private function summary(RegulatoryDocument $document, User $user, ?string $query = null): array
     {
-        $english = $document->latestVersion?->interpretation?->payloadFor('en');
-        $text = $document->latestVersion->extracted_text ?? '';
+        $version = $document->visibleVersionFor($user);
+        $english = $version?->interpretation?->payloadFor('en');
+        $text = $version === null ? '' : ($version->extracted_text ?? '');
         $englishText = $english ? json_encode($english, JSON_THROW_ON_ERROR) : '';
         $needle = mb_strtolower(trim($query ?? '', ' "'));
         $matchedField = match (true) {
@@ -147,11 +154,11 @@ class ArchiveController extends Controller
             'is_user_upload' => $document->isUserUpload(),
             'is_admin_upload' => $document->isAdminUpload(),
             'is_public' => $document->is_public,
-            'version' => $document->latestVersion?->version,
-            'status' => $document->latestVersion?->status,
-            'extraction_status' => $document->latestVersion?->extraction_status,
-            'interpretation_status' => $document->latestVersion?->interpretation_status,
-            'video_status' => $document->latestVersion?->video_status,
+            'version' => $version?->version,
+            'status' => $version?->status,
+            'extraction_status' => $version?->extraction_status,
+            'interpretation_status' => $version?->interpretation_status,
+            'video_status' => $version?->video_status,
             'snippet' => str($snippet)->limit(180)->toString(),
             'matched_field' => $matchedField,
         ];

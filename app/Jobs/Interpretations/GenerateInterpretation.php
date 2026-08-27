@@ -33,7 +33,7 @@ class GenerateInterpretation implements ShouldQueue
             ['document_version_id' => $version->getKey()],
             ['status' => 'generating', 'locale_payloads' => [], 'failed_locales' => [], 'locale_attempts' => []],
         );
-        if (in_array($interpretation->status, ['published', 'partial', 'failed'], true)) {
+        if (in_array($interpretation->status, ['published', 'failed'], true)) {
             return;
         }
 
@@ -59,7 +59,8 @@ class GenerateInterpretation implements ShouldQueue
         $exhausted = collect(SupportedLocale::cases())->every(
             fn (SupportedLocale $locale) => isset($payloads[$locale->value]) || ($attempts[$locale->value] ?? 0) >= 3,
         );
-        $status = $this->status(count($payloads), $exhausted);
+        $status = $this->status(count($payloads), isset($payloads['en']), $exhausted);
+        $englishPublished = isset($payloads['en']);
         $metadata = $payloads['en'] ?? collect($payloads)->first(fn (array $payload) => array_key_exists('applicability_tags', $payload)) ?? [];
         $document = $version->document;
         $applicabilityTags = match (true) {
@@ -101,32 +102,35 @@ class GenerateInterpretation implements ShouldQueue
             'attempts' => max($attempts ?: [0]),
             'terminal_error' => $status === 'failed' ? 'All locale generation attempts failed.' : null,
             'generated_at' => count($payloads) > 0 ? now() : null,
-            'published_at' => in_array($status, ['published', 'partial'], true) ? now() : null,
+            'published_at' => $englishPublished ? ($interpretation->published_at ?? now()) : null,
         ]);
 
         $version->update([
-            'status' => in_array($status, ['published', 'partial'], true) ? 'published' : "interpretation_{$status}",
+            'status' => $englishPublished ? 'published' : "interpretation_{$status}",
             'interpretation_status' => $status,
         ]);
 
-        if (in_array($status, ['published', 'partial'], true) && $interpretation->wasChanged('published_at')) {
+        if ($englishPublished && $interpretation->wasChanged('published_at')) {
+            if (! $document->isUserUpload()) {
+                $document->update(['is_public' => true]);
+            }
             $notify->handle($version->fresh(['document']));
             if (! $version->document->isUserUpload()) {
                 $queueVideo->forArchive($version->fresh(['document', 'interpretation']));
             }
         }
 
-        if (! $exhausted && $status === 'generating') {
+        if (! $exhausted && in_array($status, ['generating', 'partial'], true)) {
             throw new RuntimeException('One or more locales require another generation attempt.');
         }
     }
 
-    private function status(int $payloadCount, bool $exhausted): string
+    private function status(int $payloadCount, bool $hasEnglish, bool $exhausted): string
     {
         return match (true) {
             $payloadCount === count(SupportedLocale::cases()) => 'published',
-            $payloadCount > 0 && $exhausted => 'partial',
-            $payloadCount === 0 && $exhausted => 'failed',
+            $hasEnglish => 'partial',
+            $exhausted => 'failed',
             default => 'generating',
         };
     }

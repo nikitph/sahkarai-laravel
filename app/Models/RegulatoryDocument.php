@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property-read Collection<int, DocumentVersion> $versions
  * @property-read DocumentVersion|null $latestVersion
+ * @property-read DocumentVersion|null $latestPublishedVersion
  */
 class RegulatoryDocument extends Model
 {
@@ -57,15 +58,20 @@ class RegulatoryDocument extends Model
     /** @param Builder<RegulatoryDocument> $query */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        $query
-            ->where(function (Builder $query) use ($user): void {
-                $query->whereNull('uploaded_by_user_id')
-                    ->orWhere('uploaded_by_user_id', $user->getKey());
-            })
-            ->when(
-                ! $user->isAdmin(),
-                fn (Builder $query) => $query->where('is_public', true),
-            );
+        if ($user->isAdmin()) {
+            $query->whereNull('uploaded_by_user_id')
+                ->orWhere('uploaded_by_user_id', $user->getKey());
+
+            return;
+        }
+
+        $query->where(function (Builder $query) use ($user): void {
+            $query->where(function (Builder $platform): void {
+                $platform->whereNull('uploaded_by_user_id')
+                    ->where('is_public', true)
+                    ->whereHas('publishedVersions');
+            })->orWhere('uploaded_by_user_id', $user->getKey());
+        });
     }
 
     /** @return HasMany<DocumentVersion, $this> */
@@ -78,6 +84,55 @@ class RegulatoryDocument extends Model
     public function latestVersion(): HasOne
     {
         return $this->hasOne(DocumentVersion::class)->ofMany('version', 'max');
+    }
+
+    /** @return HasMany<DocumentVersion, $this> */
+    public function publishedVersions(): HasMany
+    {
+        return $this->versions()
+            ->where('extraction_status', 'ok')
+            ->whereIn('interpretation_status', ['published', 'partial'])
+            ->whereHas('interpretation', fn (Builder $query) => $query
+                ->whereNotNull('published_at')
+                ->whereJsonContainsKey('locale_payloads->en'));
+    }
+
+    /** @return HasOne<DocumentVersion, $this> */
+    public function latestPublishedVersion(): HasOne
+    {
+        return $this->hasOne(DocumentVersion::class)
+            ->ofMany(
+                ['version' => 'max'],
+                fn (Builder $query) => $query
+                    ->where('extraction_status', 'ok')
+                    ->whereIn('interpretation_status', ['published', 'partial'])
+                    ->whereHas('interpretation', fn (Builder $query) => $query
+                        ->whereNotNull('published_at')
+                        ->whereJsonContainsKey('locale_payloads->en')),
+            );
+    }
+
+    public function visibleVersionFor(User $user): ?DocumentVersion
+    {
+        if ($user->isAdmin() || $this->uploaded_by_user_id === $user->getKey()) {
+            if ($this->relationLoaded('latestVersion')) {
+                return $this->latestVersion;
+            }
+
+            return $this->latestVersion()->with('interpretation')->first();
+        }
+
+        if ($this->relationLoaded('latestPublishedVersion')) {
+            return $this->latestPublishedVersion;
+        }
+
+        return $this->latestPublishedVersion()->with('interpretation')->first();
+    }
+
+    public function isVersionVisibleTo(DocumentVersion $version, User $user): bool
+    {
+        return $version->regulatory_document_id === $this->getKey()
+            && ($user->isAdmin() || $this->uploaded_by_user_id === $user->getKey() || $version->isPublished());
     }
 
     /** @return BelongsTo<User, $this> */

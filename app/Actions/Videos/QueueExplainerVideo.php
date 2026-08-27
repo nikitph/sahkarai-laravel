@@ -39,7 +39,7 @@ class QueueExplainerVideo
                 ->whereKey($version->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-            if (! in_array($locked->interpretation_status, ['published', 'partial'], true) || $locked->interpretation === null) {
+            if (! $locked->isPublished() || $locked->interpretation === null || ! isset($locked->interpretation->locale_payloads['en'])) {
                 throw ValidationException::withMessages(['video' => 'The interpretation must be complete before generating a video.']);
             }
 

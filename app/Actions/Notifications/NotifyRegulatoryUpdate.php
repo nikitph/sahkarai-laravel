@@ -13,7 +13,7 @@ class NotifyRegulatoryUpdate
     public function handle(DocumentVersion $version): void
     {
         $document = $version->document;
-        if ($document->isUserUpload() || $document->is_backfill || ! in_array($version->interpretation_status, ['published', 'partial'], true)) {
+        if ($document->isUserUpload() || $document->is_backfill || ! $version->isPublished()) {
             return;
         }
 
@@ -26,6 +26,8 @@ class NotifyRegulatoryUpdate
                     'rbi' => 'source_rbi',
                     'income_tax' => 'source_income_tax',
                     'gst' => 'source_gst',
+                    'cbic' => 'source_cbic',
+                    'nabard' => 'source_nabard',
                     'user_upload' => null,
                 };
                 if ($sourceField === null || ! $preferences?->{$sourceField}) {

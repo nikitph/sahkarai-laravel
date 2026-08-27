@@ -35,7 +35,7 @@ Artisan::command('regulatory:backfill {--sync}', function (): void {
             RunSourcePoll::dispatch($source, 'backfill');
         }
     }
-    $this->info('One-year regulatory backfill dispatched for RBI, Income Tax, and GST.');
+    $this->info('Configured regulatory backfill dispatched for RBI, Income Tax, GST, CBIC, and NABARD.');
 })->purpose('Run the one-off historical regulatory backfill');
 
 Schedule::command('queue:prune-failed --hours=168')->daily();
@@ -44,9 +44,13 @@ Schedule::command('conformance:dispatch-scheduled')->hourly();
 Schedule::job(new RunSourcePoll(RegulatorySource::Rbi))->dailyAt('00:05');
 Schedule::job(new RunSourcePoll(RegulatorySource::IncomeTax))->dailyAt('00:20');
 Schedule::job(new RunSourcePoll(RegulatorySource::Gst))->dailyAt('00:35');
+Schedule::job(new RunSourcePoll(RegulatorySource::Cbic))->dailyAt('00:50');
+Schedule::job(new RunSourcePoll(RegulatorySource::Nabard))->dailyAt('01:05');
 Schedule::job(new RunSourcePoll(RegulatorySource::Rbi))->dailyAt('12:05');
 Schedule::job(new RunSourcePoll(RegulatorySource::IncomeTax))->dailyAt('12:20');
 Schedule::job(new RunSourcePoll(RegulatorySource::Gst))->dailyAt('12:35');
+Schedule::job(new RunSourcePoll(RegulatorySource::Cbic))->dailyAt('12:50');
+Schedule::job(new RunSourcePoll(RegulatorySource::Nabard))->dailyAt('13:05');
 Schedule::job(new SendNotificationDigest('daily_digest'))->dailyAt('03:00');
 Schedule::job(new SendNotificationDigest('weekly_digest'))->mondays()->at('03:30');
 Schedule::job(new ReconcileSubscriptions)->dailyAt('02:00');

@@ -19,9 +19,13 @@ type Prefs = {
     source_rbi: boolean;
     source_income_tax: boolean;
     source_gst: boolean;
+    source_cbic: boolean;
+    source_nabard: boolean;
     source_rbi_cadence: string;
     source_income_tax_cadence: string;
     source_gst_cadence: string;
+    source_cbic_cadence: string;
+    source_nabard_cadence: string;
 };
 export default function Notifications({
     notifications,
@@ -148,6 +152,8 @@ export default function Notifications({
                                         ['source_rbi', 'RBI'],
                                         ['source_income_tax', 'Income Tax'],
                                         ['source_gst', 'GST'],
+                                        ['source_cbic', 'CBIC'],
+                                        ['source_nabard', 'NABARD'],
                                     ].map(([key, label]) => (
                                         <div
                                             key={key}
