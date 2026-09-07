@@ -35,7 +35,8 @@ class RegulatoryDocumentPolicy
 
     public function generateExplainerVideo(User $user, RegulatoryDocument $document): bool
     {
-        return $user->canUseExplainerVideos()
+        return config('sahkarai.video.enabled')
+            && $user->canUseExplainerVideos()
             && $document->uploaded_by_user_id === $user->getKey();
     }
 }

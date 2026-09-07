@@ -8,7 +8,7 @@ The platform regulatory pipeline is:
 
 Native and Kimi extraction attempts are auditable rows. Terminal failures retain their immutable originals in an operator-only `needs_review` state. English is the publication threshold; missing supported translations remain a visible `partial` interpretation with English fallback and three total attempts per locale. A failed newer revision cannot displace the latest previously published revision.
 
-Published archive interpretations also enter the explainer pipeline:
+When the explainer-video feature flag is enabled, published archive interpretations also enter the explainer pipeline:
 
 `published interpretation → validated Lesson IR → video queue → narration-first HyperFrames render → immutable MP4 + provenance manifest`
 
@@ -66,7 +66,7 @@ The lean immutable application image runs four roles with different commands:
 - scheduler: polls, digests, pending transitions, reconciliation, and purges
 - reverb: WebSocket transport
 
-A separate immutable video-worker image runs Laravel's `video` queue with Node 22, Chromium, FFmpeg and the pinned HyperFrames runtime. Laravel remains the control plane and invokes the renderer through `ExplainerVideoGenerator`; the normal web and queue images intentionally contain no media toolchain. The video storage disk and prefix are independently configurable.
+A separate immutable video-worker image runs Laravel's `video` queue with Node 22, Chromium, FFmpeg and the pinned HyperFrames runtime. Laravel remains the control plane and invokes the renderer through `ExplainerVideoGenerator`; the normal web and queue images intentionally contain no media toolchain. The video storage disk and prefix are independently configurable. `EXPLAINER_VIDEO_ENABLED` gates automatic queueing, private generation requests, playback, and archive UI exposure; it is off while the production renderer is suspended.
 
 PostgreSQL stores application state; Redis backs queues/cache. The frozen multi-arch runtime is `ghcr.io/nikitph/laravel-runtime:1.0.0`. Classic FrankenPHP mode is deliberate until concurrent request-state isolation is separately proven.
 

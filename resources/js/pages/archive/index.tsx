@@ -2,7 +2,6 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import {
     ArrowRight,
     Calendar,
-    Clapperboard,
     DatabaseZap,
     FileText,
     LockKeyhole,
@@ -31,7 +30,6 @@ type Document = {
     status: string | null;
     extraction_status: string | null;
     interpretation_status: string | null;
-    video_status: string | null;
     is_user_upload: boolean;
     is_admin_upload: boolean;
     is_public: boolean;
@@ -369,112 +367,95 @@ export default function ArchiveIndex({
                         </span>
                     )}
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
                     {documents.data.map((document) => (
                         <Link
                             href={`/archive/${document.id}`}
                             key={document.id}
-                            className="group"
+                            className="group block border-b border-border/60 last:border-b-0 hover:bg-muted/40"
                         >
-                            <Card className="h-full rounded-2xl border-border/60 transition hover:-translate-y-0.5 hover:border-indigo-400/60 hover:shadow-lg">
-                                <CardContent className="p-5">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex gap-2">
-                                            <Badge
-                                                className="uppercase"
-                                                variant="secondary"
-                                            >
-                                                {document.is_user_upload
-                                                    ? 'User upload'
-                                                    : document.source.replace(
-                                                          '_',
-                                                          ' ',
-                                                      )}
+                            <div className="flex flex-col gap-3 p-4 transition-colors sm:flex-row sm:gap-4 sm:p-5">
+                                <div className="mt-0.5 hidden size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground sm:flex">
+                                    <FileText className="size-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge
+                                            className="uppercase"
+                                            variant="secondary"
+                                        >
+                                            {document.is_user_upload
+                                                ? 'User upload'
+                                                : document.source.replace(
+                                                      '_',
+                                                      ' ',
+                                                  )}
+                                        </Badge>
+                                        {document.is_user_upload && (
+                                            <Badge variant="outline">
+                                                <LockKeyhole className="mr-1 size-3" />{' '}
+                                                Private
                                             </Badge>
-                                            {document.is_user_upload && (
+                                        )}
+                                        {document.is_admin_upload &&
+                                            document.is_public && (
+                                                <Badge variant="outline">
+                                                    Admin upload
+                                                </Badge>
+                                            )}
+                                        {document.is_admin_upload &&
+                                            !document.is_public && (
                                                 <Badge variant="outline">
                                                     <LockKeyhole className="mr-1 size-3" />{' '}
-                                                    Private
+                                                    Admin review
                                                 </Badge>
                                             )}
-                                            {document.is_admin_upload &&
-                                                document.is_public && (
-                                                    <Badge variant="outline">
-                                                        Admin upload
-                                                    </Badge>
-                                                )}
-                                            {document.video_status ===
-                                                'ready' && (
-                                                <Badge variant="outline">
-                                                    <Clapperboard className="mr-1 size-3" />
-                                                    Video
-                                                </Badge>
-                                            )}
-                                            {['queued', 'generating'].includes(
-                                                document.video_status ?? '',
-                                            ) && (
-                                                <Badge variant="outline">
-                                                    <Clapperboard className="mr-1 size-3" />
-                                                    Video generating
-                                                </Badge>
-                                            )}
-                                            {document.is_admin_upload &&
-                                                !document.is_public && (
-                                                    <Badge variant="outline">
-                                                        <LockKeyhole className="mr-1 size-3" />{' '}
-                                                        Admin review
-                                                    </Badge>
-                                                )}
-                                            {(
-                                                document.applicability_tags ?? [
-                                                    document.applicability,
-                                                ]
-                                            ).map((tag) => (
-                                                <Badge
-                                                    key={tag}
-                                                    variant="outline"
-                                                    className="capitalize"
-                                                >
-                                                    {tag}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">
-                                            v{document.version}
-                                        </span>
+                                        {(
+                                            document.applicability_tags ?? [
+                                                document.applicability,
+                                            ]
+                                        ).map((tag) => (
+                                            <Badge
+                                                key={tag}
+                                                variant="outline"
+                                                className="capitalize"
+                                            >
+                                                {tag}
+                                            </Badge>
+                                        ))}
                                     </div>
-                                    <h2 className="mt-4 line-clamp-2 text-lg leading-snug font-semibold group-hover:text-indigo-600">
+                                    <h2 className="mt-2 line-clamp-2 text-base leading-snug font-semibold group-hover:text-indigo-600 sm:text-lg">
                                         {document.title}
                                     </h2>
-                                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                                        <Highlighted
-                                            text={
-                                                document.snippet ||
-                                                'Open the original publication and metadata.'
-                                            }
-                                            query={form.data.q}
-                                        />
-                                    </p>
-                                    <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="size-3.5" />{' '}
-                                            {document.published_at
-                                                ? new Date(
-                                                      document.published_at,
-                                                  ).toLocaleDateString()
-                                                : 'No date'}
-                                        </span>
-                                        <span className="flex items-center font-medium text-indigo-600">
-                                            {document.status === 'published'
-                                                ? t('view')
-                                                : humanStatus(
-                                                      document.status,
-                                                  )}{' '}
-                                            <ArrowRight className="ml-1 size-3.5" />
-                                        </span>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    {form.data.q && document.snippet && (
+                                        <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                                            <Highlighted
+                                                text={document.snippet}
+                                                query={form.data.q}
+                                            />
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex w-full shrink-0 flex-row items-center justify-between gap-3 text-xs text-muted-foreground sm:w-auto sm:flex-col sm:items-end">
+                                    <span className="flex items-center gap-1 whitespace-nowrap">
+                                        <Calendar className="size-3.5" />{' '}
+                                        {document.published_at
+                                            ? new Date(
+                                                  document.published_at,
+                                              ).toLocaleDateString()
+                                            : 'No date'}
+                                    </span>
+                                    <span className="whitespace-nowrap">
+                                        v{document.version}
+                                    </span>
+                                    <span className="flex items-center font-medium text-indigo-600">
+                                        {document.status === 'published'
+                                            ? t('view')
+                                            : humanStatus(document.status)}{' '}
+                                        <ArrowRight className="ml-1 size-3.5 transition-transform group-hover:translate-x-0.5" />
+                                    </span>
+                                </div>
+                            </div>
                         </Link>
                     ))}
                 </div>

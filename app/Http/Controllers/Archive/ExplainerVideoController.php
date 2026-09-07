@@ -32,6 +32,7 @@ class ExplainerVideoController extends Controller
     public function show(Request $request, RegulatoryDocument $document, ExplainerVideo $video): StreamedResponse
     {
         $this->authorize('view', $document);
+        abort_unless(config('sahkarai.video.enabled'), 404);
         abort_unless($request->user()->canUseExplainerVideos(), 403);
         $version = $video->version()->where('regulatory_document_id', $document->getKey())->first();
         abort_unless($version && $document->isVersionVisibleTo($version, $request->user()), 404);

@@ -71,6 +71,7 @@ env:
     SESSION_DRIVER: database
     QUEUE_CONNECTION: redis
     CACHE_STORE: redis
+    EXPLAINER_VIDEO_ENABLED: "false"
     REGULATORY_STORAGE_DISK: <%= ENV.fetch("REGULATORY_STORAGE_DISK", "local") %>
     AWS_DEFAULT_REGION: "<%= ENV.fetch("SPACES_REGION", "blr1") %>"
     AWS_BUCKET: "<%= ENV.fetch("SPACES_BUCKET_NAME", "") %>"

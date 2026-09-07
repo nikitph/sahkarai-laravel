@@ -38,6 +38,7 @@ env:
     REDIS_HOST: sahkarai-laravel-redis
     REDIS_PORT: "6379"
     REDIS_QUEUE_RETRY_AFTER: "3900"
+    EXPLAINER_VIDEO_ENABLED: "false"
     EXPLAINER_VIDEO_QUEUE: video
     EXPLAINER_VIDEO_STORAGE_DISK: local
     EXPLAINER_VIDEO_STORAGE_PREFIX: explainer-videos

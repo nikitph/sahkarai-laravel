@@ -115,7 +115,7 @@ class GenerateInterpretation implements ShouldQueue
                 $document->update(['is_public' => true]);
             }
             $notify->handle($version->fresh(['document']));
-            if (! $version->document->isUserUpload()) {
+            if (config('sahkarai.video.enabled') && ! $version->document->isUserUpload()) {
                 $queueVideo->forArchive($version->fresh(['document', 'interpretation']));
             }
         }

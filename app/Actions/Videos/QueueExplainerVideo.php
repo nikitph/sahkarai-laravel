@@ -33,6 +33,12 @@ class QueueExplainerVideo
 
     private function queue(DocumentVersion $version, ?User $user, string $locale): ExplainerVideo
     {
+        if (! Config::boolean('sahkarai.video.enabled')) {
+            throw ValidationException::withMessages([
+                'video' => 'Explainer video generation is temporarily unavailable.',
+            ]);
+        }
+
         $video = DB::transaction(function () use ($version, $user, $locale): ExplainerVideo {
             $locked = DocumentVersion::query()
                 ->with(['document', 'interpretation', 'explainerVideo'])

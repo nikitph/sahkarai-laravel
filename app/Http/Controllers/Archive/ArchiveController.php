@@ -75,7 +75,7 @@ class ArchiveController extends Controller
         $availableLocale = $canInterpret && $version->interpretation
             ? (isset($version->interpretation->locale_payloads[$requestedLocale]) ? $requestedLocale : 'en')
             : null;
-        $canUseVideo = $request->user()->canUseExplainerVideos();
+        $canUseVideo = config('sahkarai.video.enabled') && $request->user()->canUseExplainerVideos();
         $video = $version->explainerVideo;
 
         return Inertia::render('archive/show', [
@@ -105,7 +105,8 @@ class ArchiveController extends Controller
                 'exports' => $request->user()->tier->canExportDocuments(),
                 'chat' => $request->user()->canUseChat() && $version->isReadyForChat(),
                 'video' => $canUseVideo,
-                'generate_video' => $request->user()->can('generateExplainerVideo', $document),
+                'generate_video' => config('sahkarai.video.enabled')
+                    && $request->user()->can('generateExplainerVideo', $document),
                 'video_credits' => config('sahkarai.video.credits'),
                 'delete' => $request->user()->can('delete', $document),
                 'admin' => $request->user()->isAdmin(),
@@ -158,7 +159,6 @@ class ArchiveController extends Controller
             'status' => $version?->status,
             'extraction_status' => $version?->extraction_status,
             'interpretation_status' => $version?->interpretation_status,
-            'video_status' => $version?->video_status,
             'snippet' => str($snippet)->limit(180)->toString(),
             'matched_field' => $matchedField,
         ];
