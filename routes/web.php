@@ -7,16 +7,20 @@ use App\Http\Controllers\Archive\ExplainerVideoController;
 use App\Http\Controllers\Archive\IssueReportController;
 use App\Http\Controllers\Archive\UploadedDocumentController;
 use App\Http\Controllers\Billing\BillingController;
+use App\Http\Controllers\Billing\OrganizationBillingController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Chat\ChatMessageController;
 use App\Http\Controllers\Chat\ChatStreamController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Exports\ChatExportController;
 use App\Http\Controllers\Exports\InterpretationExportController;
+use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\Ops\CreditAdjustmentController;
 use App\Http\Controllers\Ops\IssueTriageController;
 use App\Http\Controllers\Ops\OpsDashboardController;
+use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ReadinessController;
 use App\Http\Controllers\Webhooks\RazorpayWebhookController;
 use App\Jobs\AlwaysFails;
@@ -33,6 +37,7 @@ Route::get('locale/{locale}', function (string $locale) {
     return back();
 })->name('locale.update');
 Route::post('webhooks/razorpay', RazorpayWebhookController::class)->name('webhooks.razorpay');
+Route::get('organizations/{organization}/invitations/{token}', [InvitationController::class, 'accept'])->name('invitations.accept');
 
 Route::get('conformance/sse', function () {
     return response()->stream(function (): void {
@@ -97,6 +102,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('billing/subscribe', [BillingController::class, 'subscribe'])->name('billing.subscribe');
     Route::post('billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::post('billing/resume', [BillingController::class, 'resume'])->name('billing.resume');
+    Route::get('billing/team', [OrganizationBillingController::class, 'index'])->name('billing.team.index');
+    Route::post('billing/team', [OrganizationBillingController::class, 'store'])->name('billing.team.store');
+    Route::post('organizations/{organization}/switch', [OrganizationController::class, 'switch'])->name('organizations.switch');
+
+    Route::middleware('organization')->group(function () {
+        Route::get('members', [MemberController::class, 'index'])->name('members.index');
+        Route::post('members/invitations', [MemberController::class, 'store'])->name('members.invitations.store');
+        Route::delete('members/invitations/{invitation}', [MemberController::class, 'destroyInvitation'])->name('members.invitations.destroy');
+        Route::patch('members/{member}', [MemberController::class, 'update'])->name('members.update');
+        Route::delete('members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
+    });
 
     Route::middleware('admin')->prefix('ops')->name('ops.')->group(function () {
         Route::get('/', OpsDashboardController::class)->name('dashboard');

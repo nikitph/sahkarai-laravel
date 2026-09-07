@@ -3,6 +3,7 @@
 namespace App\Contracts\Billing;
 
 use App\Enums\Tier;
+use App\Models\Organization;
 use App\Models\Subscription;
 use App\Models\User;
 
@@ -10,6 +11,9 @@ interface BillingGateway
 {
     /** @return array<string, mixed> */
     public function createSubscription(User $user, Tier $tier): array;
+
+    /** @return array<string, mixed> */
+    public function createOrganizationSubscription(Organization $organization, User $purchaser, Tier $tier, int $quantity, string $offerId): array;
 
     /** @return array<string, mixed> */
     public function changePlan(Subscription $subscription, Tier $tier, bool $atCycleEnd): array;

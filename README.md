@@ -46,6 +46,13 @@ RAZORPAY_WEBHOOK_SECRET=
 RAZORPAY_TIER_1_PLAN_ID=
 RAZORPAY_TIER_2_PLAN_ID=
 RAZORPAY_TIER_3_PLAN_ID=
+ORGANIZATION_BILLING_ENABLED=true
+ORGANIZATION_BILLING_RAZORPAY_ENABLED=false
+RAZORPAY_ORG_OFFER_5_ID=
+RAZORPAY_ORG_OFFER_10_ID=
+RAZORPAY_ORG_OFFER_15_ID=
+RAZORPAY_ORG_OFFER_20_ID=
+RAZORPAY_ORG_OFFER_25_ID=
 ```
 
 Income Tax ingestion defaults to the department's official Circular RSS feed. RBI, CBIC, and NABARD have source-specific official-site observers. Set `GST_FEED_URL` before enabling GST, or override the documented source endpoints if a regulator supplies an allow-listed endpoint.

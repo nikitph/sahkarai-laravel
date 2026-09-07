@@ -17,4 +17,9 @@ class OrganizationPolicy
     {
         return $user->hasPermission(Permission::ManageMembers, $organization);
     }
+
+    public function manageBilling(User $user, Organization $organization): bool
+    {
+        return $user->hasPermission(Permission::ManageBilling, $organization);
+    }
 }

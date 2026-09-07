@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Billing;
 
+use App\Actions\Billing\ApplyOrganizationSubscriptionEntitlements;
 use App\Enums\SubscriptionStatus;
 use App\Enums\Tier;
 use App\Models\NotificationDelivery;
@@ -16,15 +17,17 @@ class ApplyPendingSubscriptionChanges implements ShouldQueue
 {
     use Queueable;
 
-    public function handle(): void
+    public function handle(?ApplyOrganizationSubscriptionEntitlements $organizationEntitlements = null): void
     {
+        $organizationEntitlements ??= app(ApplyOrganizationSubscriptionEntitlements::class);
+
         Subscription::query()
             ->where(function ($query): void {
                 $query->where(fn ($query) => $query->whereNotNull('pending_tier')->where('cancel_at', '<=', now()))
                     ->orWhere(fn ($query) => $query->where('status', SubscriptionStatus::Halted)->where('current_period_end', '<=', now()));
             })
-            ->each(function (Subscription $subscription): void {
-                DB::transaction(function () use ($subscription): void {
+            ->each(function (Subscription $subscription) use ($organizationEntitlements): void {
+                DB::transaction(function () use ($subscription, $organizationEntitlements): void {
                     $subscription = Subscription::query()->whereKey($subscription->getKey())->lockForUpdate()->firstOrFail();
                     $duePendingChange = $subscription->pending_tier !== null && $subscription->cancel_at?->lte(now());
                     $dueFailedRenewal = $subscription->status === SubscriptionStatus::Halted
@@ -36,11 +39,20 @@ class ApplyPendingSubscriptionChanges implements ShouldQueue
                     $target = $subscription->status === SubscriptionStatus::Halted
                         ? Tier::Free
                         : ($subscription->pending_tier ?? Tier::Free);
-                    $user = $subscription->user()->lockForUpdate()->first();
+                    $user = $subscription->isOrganization()
+                        ? $subscription->purchaser()->lockForUpdate()->first()
+                        : $subscription->user()->lockForUpdate()->first();
                     if (! $user) {
                         return;
                     }
-                    $user->update(['tier' => $target, 'credits_balance' => $target->canChat() ? $user->credits_balance : 0]);
+
+                    if ($subscription->isOrganization()) {
+                        if ($target === Tier::Free) {
+                            $organizationEntitlements->deactivate($subscription);
+                        }
+                    } else {
+                        $user->update(['tier' => $target, 'credits_balance' => $target->canChat() ? $user->credits_balance : 0]);
+                    }
                     $subscription->update([
                         'tier' => $target,
                         'status' => $target === Tier::Free ? SubscriptionStatus::Cancelled : SubscriptionStatus::Active,
@@ -53,7 +65,10 @@ class ApplyPendingSubscriptionChanges implements ShouldQueue
                         'dedupe_key' => "billing-transition:{$subscription->getKey()}:".now()->toDateString(),
                     ], [
                         'user_id' => $user->getKey(), 'type' => 'billing_downgraded', 'title' => 'Your plan has changed',
-                        'body' => 'Your account is now on the '.str_replace('_', ' ', $target->value).' plan.', 'data' => [],
+                        'body' => $subscription->isOrganization()
+                            ? 'Your organization is now on the '.str_replace('_', ' ', $target->value).' plan.'
+                            : 'Your account is now on the '.str_replace('_', ' ', $target->value).' plan.',
+                        'data' => [],
                     ]);
                     NotificationDelivery::query()->firstOrCreate([
                         'product_notification_id' => $notification->getKey(), 'user_id' => $user->getKey(),

@@ -11,19 +11,26 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BillingController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
+        $organizationSubscription = $request->user()->currentOrganization?->subscription()->first();
+        if (config('sahkarai.razorpay.organization_billing.enabled') && $organizationSubscription) {
+            return redirect()->route('billing.team.index');
+        }
+
         $subscription = $request->user()->subscription()->firstOrCreate([], ['tier' => Tier::Free, 'status' => SubscriptionStatus::Free]);
         $this->authorize('view', $subscription);
 
         return Inertia::render('billing/index', [
             'subscription' => $subscription,
             'plans' => config('sahkarai.tiers'),
+            'teamBillingEnabled' => (bool) config('sahkarai.razorpay.organization_billing.enabled'),
             'checkout' => $request->session()->pull('razorpay_checkout')
                 ?? ($subscription->status === SubscriptionStatus::Pending && $subscription->pending_tier
                     ? $this->checkoutPayload($request->user(), $subscription, $subscription->pending_tier)
@@ -33,6 +40,10 @@ class BillingController extends Controller
 
     public function subscribe(Request $request, BillingGateway $gateway): RedirectResponse
     {
+        if ($request->user()->currentOrganization?->subscription()->exists()) {
+            throw ValidationException::withMessages(['tier' => 'Your access is managed by an organization subscription.']);
+        }
+
         $validated = $request->validate(['tier' => ['required', Rule::enum(Tier::class), 'not_in:free']]);
         $tier = Tier::from($validated['tier']);
         $subscription = $request->user()->subscription()->firstOrCreate([], ['tier' => Tier::Free, 'status' => SubscriptionStatus::Free]);

@@ -24,9 +24,9 @@ Controllers validate and shape HTTP responses. Stateful domain transitions live 
 
 ## Ownership and authorization
 
-Product data is user-owned. Chats, messages, subscriptions, credit ledger rows, notifications, preferences, and views are reached through their owning user or protected by policies. SaaS admins receive operations metadata but cannot impersonate users, start chats, or read chat bodies.
+Product data is user-owned. Chats, messages, individual subscriptions, credit ledger rows, notifications, preferences, and views are reached through their owning user or protected by policies. SaaS admins receive operations metadata but cannot impersonate users, start chats, or read chat bodies.
 
-The initializer's organization infrastructure remains installed but dormant for v1. No product route creates organizations or memberships. This implementation uses Laravel session authentication and application-enforced ownership rather than the specs' Supabase-token vocabulary. Optional passkeys and 2FA are retained as a baseline strengthening.
+Organization subscriptions activate the initializer's tenant foundation. An organization selects one paid tier for 2–25 seats; the owner consumes the first seat, and pending invitations reserve capacity. Owners manage billing, while owners and admins may invite, change roles, cancel invitations, and remove non-owner members. `TenantContext`, tenant model scopes, policies, and cross-tenant denial tests protect organization seat data. Chats and private documents remain owned by each user rather than becoming visible to organization administrators. Individual-to-organization subscription transitions are deliberately not implemented.
 
 Polled regulatory documents, their versions, poll runs, and ingestion alerts are platform-owned. Tier 2, Tier 3, and SaaS admin users may also create private, user-owned documents from readable PDFs up to 5 MB. Private documents, extracted text, interpretations, downloads, exports, and document-grounded chats are visible only to the uploader. Owner deletion cascades database records and removes stored original/extracted artifacts; permanent account purge does the same. Private publications never enter regulatory notification fan-out.
 
@@ -56,6 +56,8 @@ Tier 2 and Tier 3 users can view explainer videos. Public archive versions queue
 ## Billing boundary
 
 Razorpay is authoritative for activation and renewal. Local checkout requests never grant access. Signed lifecycle webhooks activate tiers, reset monthly chat credits, apply prorated upgrades into a chat-enabled tier, and record failures. Tier 3 inherits chat and adds a distinct personalized-chat entitlement; the personalization settings contract is intentionally left to its own product specification. Downgrades are queued until the paid-period anniversary. A daily reconciliation job records drift and alerts ops.
+
+Organization billing applies these discount bands: 2–5 seats receive 5%, 6–10 receive 10%, 11–15 receive 15%, 16–20 receive 20%, and 21–25 receive 25%. Prices and discounts are snapshotted locally in integer paise/basis points. While provider checkout is not implemented, `ORGANIZATION_BILLING_RAZORPAY_ENABLED=false` auto-approves organization purchases and activates seats immediately. The retained provider path uses the same paid plan IDs with Razorpay subscription `quantity` and configured offers, and restores signed-webhook authority when explicitly enabled. Tier 2 and Tier 3 cycle credits are granted independently to every active seat holder with per-user idempotency keys.
 
 ## Runtime topology
 

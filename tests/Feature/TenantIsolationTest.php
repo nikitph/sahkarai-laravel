@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Actions\Organizations\CreateOrganization;
+use App\Enums\OrganizationSeatStatus;
+use App\Models\OrganizationSeat;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
@@ -43,5 +45,21 @@ class TenantIsolationTest extends TestCase
     public function test_tenant_model_defaults_to_deny_without_context(): void
     {
         $this->assertSame(0, Project::query()->count());
+    }
+
+    public function test_organization_seats_are_invisible_across_organizations_and_without_context(): void
+    {
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+        $aliceOrg = app(CreateOrganization::class)->handle($alice, 'Alice Seats');
+        $bobOrg = app(CreateOrganization::class)->handle($bob, 'Bob Seats');
+
+        app(TenantContext::class)->set($aliceOrg);
+        $seat = OrganizationSeat::create(['user_id' => $alice->id, 'status' => OrganizationSeatStatus::Active]);
+        app(TenantContext::class)->set($bobOrg);
+        $this->assertNull(OrganizationSeat::find($seat->id));
+
+        app(TenantContext::class)->clear();
+        $this->assertSame(0, OrganizationSeat::query()->count());
     }
 }

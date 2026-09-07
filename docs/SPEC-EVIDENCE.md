@@ -1,6 +1,6 @@
 # Gherkin conformance evidence
 
-This inventory is the review ledger for all **59 feature files / 319 declared scenarios** in `specs/`.
+This inventory is the review ledger for all **60 feature files / 329 declared scenarios** in `specs/`.
 The Gherkin is the product contract, not an executable parallel test stack: behavior is proven through Laravel feature tests, policy tests, AI SDK fakes, signed provider fixtures, PostgreSQL/Docker smoke tests, and compiled-browser checks. Scenario outlines are exercised through enum/config boundaries and representative locale/tier/source cases rather than copied into a second step-definition framework.
 
 | Feature | Scenarios | Primary implementation and evidence |
@@ -17,7 +17,7 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 | `auth_and_access/rls_interpretation_access` | 5 | tier policies and server-side serialization; Free/Tier 1/Tier 2 archive tests |
 | `auth_and_access/rls_subscription_privacy` | 5 | one-to-one owner subscription policy; billing routes derive subscription from authenticated user |
 | `auth_and_access/role_individual_member` | 4 | `UserRole`, registration defaults, product policies; registration test |
-| `auth_and_access/role_org_dormant` | 5 | no organization product routes; stronger initializer organization primitives remain isolated/dormant |
+| `auth_and_access/role_org_dormant` | 5 | historical v1 negative coverage, superseded for organization seats by `payments/organization_seats` |
 | `auth_and_access/role_saas_admin` | 8 | admin middleware, ops-only routes and metadata-only chat access; ops lookup/triage tests |
 | `auth_and_access/session_management` | 5 | Laravel session regeneration/logout/remember behavior; authentication suite |
 | `auth_and_access/signin` | 6 | Fortify login/throttle/session flow; authentication suite |
@@ -59,6 +59,7 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 | `payments/payment_cancellation` | 3 | provider-scheduled cancellation and local pending Free transition; billing UI/controller tests |
 | `payments/payment_downgrade` | 6 | provider cycle-end change, local pending state, resume and anniversary job; deferred-transition tests |
 | `payments/payment_failed_renewal` | 4 | provider retry remains authoritative; each failure logs email/in-app, halted expiry downgrades/notifies |
+| `payments/organization_seats` | 9 | local auto-approval, retained quantity/offer checkout, tenant-scoped seat model, webhook entitlements and policy-checked member administration; `OrganizationSeatBillingTest` and `TenantIsolationTest` |
 | `payments/payment_plans` | 6 | INR monthly plan/config contract and checkout payload; pricing/checkout tests |
 | `payments/payment_refunds` | 2 | no user refund route; signed refund webhook creates idempotent adjustment entry |
 | `payments/payment_topup_dormant` | 4 | no purchase route; signed/idempotent constrained top-up webhook; webhook tests |

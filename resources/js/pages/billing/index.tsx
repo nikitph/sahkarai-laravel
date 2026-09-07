@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     Bot,
     Check,
@@ -44,10 +44,12 @@ export default function Billing({
     subscription,
     plans,
     checkout,
+    teamBillingEnabled,
 }: {
     subscription: Subscription;
     plans: Record<string, { monthly_price: number; monthly_credits: number }>;
     checkout: Checkout;
+    teamBillingEnabled: boolean;
 }) {
     const t = useT();
 
@@ -187,6 +189,13 @@ export default function Billing({
                         when interpretations or document-grounded AI become
                         valuable.
                     </p>
+                    {teamBillingEnabled && (
+                        <Button variant="outline" className="mt-5" asChild>
+                            <Link href="/billing/team">
+                                Buy 2–25 seats for your organization
+                            </Link>
+                        </Button>
+                    )}
                 </div>
                 {subscription.cancel_at && (
                     <div className="mx-auto mb-6 max-w-3xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-center text-sm dark:bg-amber-950/20">

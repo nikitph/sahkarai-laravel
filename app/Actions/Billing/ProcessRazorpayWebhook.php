@@ -21,7 +21,10 @@ use Throwable;
 
 class ProcessRazorpayWebhook
 {
-    public function __construct(private readonly AdjustCredits $credits) {}
+    public function __construct(
+        private readonly AdjustCredits $credits,
+        private readonly ApplyOrganizationSubscriptionEntitlements $organizationEntitlements,
+    ) {}
 
     /** @param array<string, mixed> $payload */
     public function handle(string $eventId, array $payload): ProcessedWebhook
@@ -63,6 +66,13 @@ class ProcessRazorpayWebhook
                     $subscription = Subscription::query()->where('provider_subscription_id', $providerId)->lockForUpdate()->first();
                     if (! $subscription) {
                         throw new RuntimeException("Unknown Razorpay subscription: {$providerId}");
+                    }
+
+                    if ($subscription->isOrganization()) {
+                        $this->processOrganizationSubscription($subscription, $eventType, $eventId, $entity);
+                        $lockedWebhook->update(['status' => 'processed', 'processed_at' => now(), 'error' => null]);
+
+                        return;
                     }
 
                     $user = $subscription->user()->lockForUpdate()->firstOrFail();
@@ -138,6 +148,60 @@ class ProcessRazorpayWebhook
         }
 
         return $webhook->refresh();
+    }
+
+    /** @param array<string, mixed> $entity */
+    private function processOrganizationSubscription(Subscription $subscription, string $eventType, string $eventId, array $entity): void
+    {
+        if (isset($entity['quantity']) && (int) $entity['quantity'] !== $subscription->seat_quantity) {
+            throw new RuntimeException('Razorpay organization seat quantity does not match the local subscription.');
+        }
+
+        $status = match ($eventType) {
+            'subscription.activated', 'subscription.charged' => SubscriptionStatus::Active,
+            'subscription.halted' => SubscriptionStatus::Halted,
+            'subscription.cancelled' => SubscriptionStatus::Cancelled,
+            'subscription.completed' => SubscriptionStatus::Completed,
+            default => null,
+        };
+
+        if ($status) {
+            $subscription->update([
+                'status' => $status,
+                'current_period_start' => isset($entity['current_start']) ? now()->setTimestamp($entity['current_start']) : $subscription->current_period_start,
+                'current_period_end' => isset($entity['current_end']) ? now()->setTimestamp($entity['current_end']) : $subscription->current_period_end,
+                'cancelled_at' => $status === SubscriptionStatus::Cancelled ? now() : $subscription->cancelled_at,
+                'provider_payload' => [...($subscription->provider_payload ?? []), ...$entity],
+            ]);
+        }
+
+        if (in_array($eventType, ['subscription.activated', 'subscription.charged'], true)) {
+            $subscription->update([
+                'tier' => $subscription->pending_tier ?? $subscription->tier,
+                'pending_tier' => null,
+            ]);
+            $this->organizationEntitlements->activate($subscription->refresh(), $eventId, $eventType === 'subscription.charged');
+        }
+
+        $purchaser = $subscription->purchaser()->lockForUpdate()->first();
+        if ($purchaser && in_array($eventType, ['payment.failed', 'subscription.pending', 'subscription.halted'], true)) {
+            $notification = ProductNotification::query()->firstOrCreate(['dedupe_key' => "billing-failed:{$eventId}"], [
+                'user_id' => $purchaser->getKey(), 'type' => 'billing_failed', 'title' => 'Payment needs attention',
+                'body' => 'Your organization renewal payment failed. Update billing to keep seat access active.', 'data' => [],
+            ]);
+            NotificationDelivery::query()->firstOrCreate([
+                'product_notification_id' => $notification->getKey(), 'user_id' => $purchaser->getKey(), 'channel' => 'in_app',
+            ], ['status' => 'delivered', 'locale' => $purchaser->locale, 'delivered_at' => now()]);
+            $purchaser->notify((new BillingStatusMail($notification->title, $notification->body))->locale($purchaser->locale->value));
+            NotificationDelivery::query()->firstOrCreate([
+                'product_notification_id' => $notification->getKey(), 'user_id' => $purchaser->getKey(), 'channel' => 'email',
+            ], ['status' => 'queued', 'locale' => $purchaser->locale]);
+        }
+
+        if (in_array($eventType, ['subscription.cancelled', 'subscription.completed'], true)) {
+            $this->organizationEntitlements->deactivate($subscription);
+            $subscription->update(['tier' => Tier::Free, 'pending_tier' => null]);
+        }
     }
 
     /** @param array<string, mixed> $payload */

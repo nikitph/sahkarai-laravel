@@ -4,6 +4,7 @@ namespace App\Services\Billing;
 
 use App\Contracts\Billing\BillingGateway;
 use App\Enums\Tier;
+use App\Models\Organization;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
@@ -25,6 +26,28 @@ class RazorpayGateway implements BillingGateway
             'total_count' => 120,
             'customer_notify' => 1,
             'notes' => ['user_id' => (string) $user->getKey(), 'tier' => $tier->value],
+        ])->throw()->json();
+    }
+
+    /** @return array<string, mixed> */
+    public function createOrganizationSubscription(Organization $organization, User $purchaser, Tier $tier, int $quantity, string $offerId): array
+    {
+        $planId = (string) config("sahkarai.razorpay.plans.{$tier->value}");
+        if ($planId === '') {
+            throw new RuntimeException("No Razorpay plan is configured for {$tier->value}.");
+        }
+
+        return $this->client()->post('/subscriptions', [
+            'plan_id' => $planId,
+            'quantity' => $quantity,
+            'offer_id' => $offerId,
+            'total_count' => 120,
+            'customer_notify' => 1,
+            'notes' => [
+                'organization_id' => (string) $organization->getKey(),
+                'purchaser_user_id' => (string) $purchaser->getKey(),
+                'tier' => $tier->value,
+            ],
         ])->throw()->json();
     }
 
