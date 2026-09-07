@@ -133,7 +133,7 @@ class ResilientRegulatoryIngestionTest extends TestCase
         $notify = Mockery::mock(NotifyRegulatoryUpdate::class);
         $notify->shouldReceive('handle')->once();
         $video = Mockery::mock(QueueExplainerVideo::class);
-        $video->shouldReceive('forArchive')->once();
+        $video->shouldNotReceive('forArchive');
         $job = new GenerateInterpretation($version->id);
 
         foreach ([1, 2, 3] as $attempt) {

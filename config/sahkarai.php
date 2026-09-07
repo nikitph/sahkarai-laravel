@@ -25,6 +25,7 @@ return [
         'topup_url' => env('CREDIT_TOPUP_URL'),
     ],
     'video' => [
+        'enabled' => (bool) env('EXPLAINER_VIDEO_ENABLED', false),
         'storage_disk' => env('EXPLAINER_VIDEO_STORAGE_DISK', env('FILESYSTEM_DISK', 'local')),
         'storage_prefix' => trim((string) env('EXPLAINER_VIDEO_STORAGE_PREFIX', 'explainer-videos'), '/'),
         'queue' => env('EXPLAINER_VIDEO_QUEUE', 'video'),

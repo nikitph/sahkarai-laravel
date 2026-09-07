@@ -187,6 +187,7 @@ class UserDocumentUploadTest extends TestCase
 
     public function test_tier_two_owner_can_queue_one_private_explainer_video_for_ten_credits(): void
     {
+        config()->set('sahkarai.video.enabled', true);
         Queue::fake();
         $owner = User::factory()->tier2()->create(['credits_balance' => 20]);
         [$document, $version] = $this->privateDocument($owner, 'Video memo');
@@ -212,6 +213,7 @@ class UserDocumentUploadTest extends TestCase
 
     public function test_private_video_generation_requires_the_owner_and_tier_two_capability(): void
     {
+        config()->set('sahkarai.video.enabled', true);
         Queue::fake();
         $tierOneOwner = User::factory()->tier1()->create(['credits_balance' => 20]);
         [$document, $version] = $this->privateDocument($tierOneOwner, 'Restricted video memo');
@@ -228,6 +230,7 @@ class UserDocumentUploadTest extends TestCase
 
     public function test_private_video_generation_does_not_queue_or_debit_without_ten_credits(): void
     {
+        config()->set('sahkarai.video.enabled', true);
         Queue::fake();
         $owner = User::factory()->tier2()->create(['credits_balance' => 9]);
         [$document, $version] = $this->privateDocument($owner, 'Insufficient video credits');
@@ -245,6 +248,7 @@ class UserDocumentUploadTest extends TestCase
 
     public function test_video_job_persists_artifacts_and_marks_the_document_ready(): void
     {
+        config()->set('sahkarai.video.enabled', true);
         Storage::fake('local');
         Queue::fake();
         $owner = User::factory()->tier2()->create(['credits_balance' => 20]);
@@ -282,6 +286,7 @@ class UserDocumentUploadTest extends TestCase
 
     public function test_terminal_private_video_failure_refunds_the_original_debit(): void
     {
+        config()->set('sahkarai.video.enabled', true);
         Queue::fake();
         $owner = User::factory()->tier2()->create(['credits_balance' => 20]);
         [$document, $version] = $this->privateDocument($owner, 'Refunded video memo');
@@ -298,6 +303,62 @@ class UserDocumentUploadTest extends TestCase
             'amount' => 10,
             'reason' => CreditReason::RefundExplainerVideo->value,
         ]);
+    }
+
+    public function test_suspended_video_generation_is_hidden_and_rejects_new_requests(): void
+    {
+        Queue::fake();
+        $owner = User::factory()->tier2()->create(['credits_balance' => 20]);
+        [$document, $version] = $this->privateDocument($owner, 'Suspended video memo');
+        $version->update(['status' => 'published', 'interpretation_status' => 'published']);
+
+        $this->actingAs($owner)->get(route('archive.show', $document))
+            ->assertInertia(fn ($page) => $page
+                ->where('capabilities.video', false)
+                ->where('capabilities.generate_video', false)
+                ->where('document.latest_version.explainer_video', null));
+
+        $this->actingAs($owner)
+            ->post(route('explainer-videos.store', $document), ['version' => $version->getKey()])
+            ->assertForbidden();
+
+        $this->assertSame(20, $owner->refresh()->credits_balance);
+        $this->assertDatabaseCount('explainer_videos', 0);
+        $this->assertDatabaseCount('credit_ledger', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_suspended_video_job_stops_without_calling_the_renderer(): void
+    {
+        Queue::fake();
+        $owner = User::factory()->tier2()->create();
+        [$document, $version] = $this->privateDocument($owner, 'Interrupted video memo');
+        $document->update([
+            'source' => RegulatorySource::Rbi,
+            'uploaded_by_user_id' => null,
+            'is_public' => true,
+        ]);
+        $version->update(['video_status' => 'queued']);
+        $video = $version->explainerVideo()->create([
+            'requested_by_user_id' => null,
+            'status' => 'queued',
+            'metadata' => ['locale' => 'en'],
+        ]);
+
+        $generator = new class implements ExplainerVideoGenerator
+        {
+            public function generate(array $lesson, string $workingDirectory): RenderedExplainerVideo
+            {
+                throw new \RuntimeException('The suspended renderer must not be called.');
+            }
+        };
+
+        (new GenerateExplainerVideo($video->getKey()))->handle(app(BuildExplainerLesson::class), $generator);
+
+        $this->assertSame('failed', $video->refresh()->status->value);
+        $this->assertSame('feature_disabled', $video->failure_code);
+        $this->assertSame('failed', $version->refresh()->video_status);
+        $this->assertDatabaseCount('credit_ledger', 0);
     }
 
     /** @return array{RegulatoryDocument, DocumentVersion} */

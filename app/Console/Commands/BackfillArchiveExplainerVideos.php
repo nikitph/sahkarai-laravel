@@ -14,6 +14,12 @@ class BackfillArchiveExplainerVideos extends Command
 
     public function handle(QueueExplainerVideo $queue): int
     {
+        if (! config('sahkarai.video.enabled')) {
+            $this->components->warn('Explainer video generation is temporarily disabled.');
+
+            return self::SUCCESS;
+        }
+
         $count = 0;
         DocumentVersion::query()
             ->whereIn('interpretation_status', ['published', 'partial'])

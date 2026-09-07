@@ -37,6 +37,20 @@ class GenerateExplainerVideo implements ShouldBeUnique, ShouldQueue
 
     public function handle(BuildExplainerLesson $buildLesson, ExplainerVideoGenerator $generator): void
     {
+        if (! Config::boolean('sahkarai.video.enabled')) {
+            $video = ExplainerVideo::query()->with('version')->find($this->explainerVideoId);
+            if ($video !== null && $video->status !== ExplainerVideoStatus::Ready) {
+                $video->update([
+                    'status' => ExplainerVideoStatus::Failed,
+                    'failure_code' => 'feature_disabled',
+                    'failure_message' => 'Explainer video generation is temporarily disabled.',
+                ]);
+                $video->version->update(['video_status' => ExplainerVideoStatus::Failed->value]);
+            }
+
+            return;
+        }
+
         $video = ExplainerVideo::query()->with(['version.document', 'version.interpretation'])->findOrFail($this->explainerVideoId);
         if ($video->status === ExplainerVideoStatus::Ready) {
             return;
