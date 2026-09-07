@@ -78,6 +78,7 @@ class HandleInertiaRequests extends Middleware
             'permissions' => $current
                 ? collect(Permission::cases())->filter(fn (Permission $permission) => $user->hasPermission($permission, $current))->map->value->values()
                 : [],
+            'team_billing_enabled' => (bool) config('sahkarai.razorpay.organization_billing.enabled'),
         ];
     }
 }

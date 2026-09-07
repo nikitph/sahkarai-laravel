@@ -95,5 +95,17 @@ return [
             'tier_2' => env('RAZORPAY_TIER_2_PLAN_ID'),
             'tier_3' => env('RAZORPAY_TIER_3_PLAN_ID'),
         ],
+        'organization_billing' => [
+            'enabled' => (bool) env('ORGANIZATION_BILLING_ENABLED', false),
+            'min_seats' => 2,
+            'max_seats' => 25,
+            'discounts' => [
+                ['min' => 2, 'max' => 5, 'basis_points' => 500, 'offer_id' => env('RAZORPAY_ORG_OFFER_5_ID')],
+                ['min' => 6, 'max' => 10, 'basis_points' => 1000, 'offer_id' => env('RAZORPAY_ORG_OFFER_10_ID')],
+                ['min' => 11, 'max' => 15, 'basis_points' => 1500, 'offer_id' => env('RAZORPAY_ORG_OFFER_15_ID')],
+                ['min' => 16, 'max' => 20, 'basis_points' => 2000, 'offer_id' => env('RAZORPAY_ORG_OFFER_20_ID')],
+                ['min' => 21, 'max' => 25, 'basis_points' => 2500, 'offer_id' => env('RAZORPAY_ORG_OFFER_25_ID')],
+            ],
+        ],
     ],
 ];

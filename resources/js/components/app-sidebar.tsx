@@ -6,12 +6,15 @@ import {
     CreditCard,
     Gauge,
     LayoutGrid,
+    UsersRound,
+    Building2,
     Settings2,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 import { Badge } from '@/components/ui/badge';
 import {
     Sidebar,
@@ -26,7 +29,7 @@ import { useT } from '@/lib/i18n';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { product } = usePage().props;
+    const { product, organization } = usePage().props;
     const t = useT();
     const items: NavItem[] = [
         { title: t('dashboard'), href: '/dashboard', icon: LayoutGrid },
@@ -45,6 +48,19 @@ export function AppSidebar() {
               ]
             : []),
         { title: t('billing'), href: '/billing', icon: CreditCard },
+        ...(organization?.permissions.includes('members.manage')
+            ? [{ title: 'People & access', href: '/members', icon: UsersRound }]
+            : []),
+        ...(organization?.team_billing_enabled &&
+        organization.permissions.includes('billing.manage')
+            ? [
+                  {
+                      title: 'Team billing',
+                      href: '/billing/team',
+                      icon: Building2,
+                  },
+              ]
+            : []),
         ...(product?.role === 'saas_admin'
             ? [{ title: t('ops'), href: '/ops', icon: Gauge }]
             : []),
@@ -78,6 +94,7 @@ export function AppSidebar() {
                 </div>
             </SidebarHeader>
             <SidebarContent>
+                <OrganizationSwitcher />
                 <NavMain items={items} />
             </SidebarContent>
             <SidebarFooter>

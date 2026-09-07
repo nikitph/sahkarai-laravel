@@ -2,15 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Organizations\AcceptOrganizationInvitation;
 use App\Models\Invitation;
+use App\Models\Organization;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class InvitationController extends Controller
 {
-    public function accept(Request $request, string $token): RedirectResponse
-    {
+    public function accept(
+        Request $request,
+        Organization $organization,
+        string $token,
+        TenantContext $context,
+        AcceptOrganizationInvitation $accept,
+    ): RedirectResponse {
+        $context->set($organization);
         $invitation = Invitation::query()->where('token', $token)->whereNull('accepted_at')->firstOrFail();
         abort_if($invitation->expires_at->isPast(), 410, 'This invitation has expired.');
 
@@ -18,15 +26,8 @@ class InvitationController extends Controller
             return redirect()->route('login')->with('status', 'Sign in with '.$invitation->email.' to accept your invitation.');
         }
 
-        abort_unless(strcasecmp($request->user()->email, $invitation->email) === 0, 403);
-
-        DB::transaction(function () use ($request, $invitation): void {
-            $invitation->organization->members()->syncWithoutDetaching([
-                $request->user()->getKey() => ['role' => $invitation->role->value],
-            ]);
-            $invitation->update(['accepted_at' => now()]);
-            $request->user()->update(['current_organization_id' => $invitation->organization_id]);
-        });
+        $accept->handle($invitation, $request->user());
+        $context->clear();
 
         return redirect()->route('dashboard')->with('success', 'Welcome to '.$invitation->organization->name.'.');
     }

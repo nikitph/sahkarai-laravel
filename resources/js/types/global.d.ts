@@ -19,6 +19,7 @@ declare module '@inertiajs/core' {
                 current: Organization | null;
                 all: Organization[];
                 permissions: string[];
+                team_billing_enabled: boolean;
             } | null;
             product: {
                 tier: 'free' | 'tier_1' | 'tier_2' | 'tier_3';

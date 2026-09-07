@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\Invitation;
+use App\Models\Role;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -12,7 +12,12 @@ class OrganizationInvitation extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Invitation $invitation) {}
+    public function __construct(
+        public int $organizationId,
+        public string $organizationName,
+        public Role $role,
+        public string $token,
+    ) {}
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -23,9 +28,12 @@ class OrganizationInvitation extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Join '.$this->invitation->organization->name)
-            ->line('You have been invited to collaborate as '.$this->invitation->role->value.'.')
-            ->action('Accept invitation', route('invitations.accept', $this->invitation->token))
+            ->subject('Join '.$this->organizationName)
+            ->line('You have been invited to collaborate as '.$this->role->value.'.')
+            ->action('Accept invitation', route('invitations.accept', [
+                'organization' => $this->organizationId,
+                'token' => $this->token,
+            ]))
             ->line('This invitation expires in seven days.');
     }
 }

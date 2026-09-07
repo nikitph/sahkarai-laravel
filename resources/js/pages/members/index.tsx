@@ -1,5 +1,12 @@
-import { Form, Head } from '@inertiajs/react';
-import { Clock3, Mail, ShieldCheck, UserPlus, UsersRound } from 'lucide-react';
+import { Form, Head, router } from '@inertiajs/react';
+import {
+    Clock3,
+    Mail,
+    ShieldCheck,
+    Trash2,
+    UserPlus,
+    UsersRound,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,10 +37,12 @@ export default function Members({
     members,
     invitations,
     roles,
+    seats,
 }: {
     members: Member[];
     invitations: Invitation[];
     roles: string[];
+    seats: { used: number; total: number; tier: string; status: string };
 }) {
     return (
         <>
@@ -49,6 +58,14 @@ export default function Members({
                     <p className="mt-2 text-sm text-muted-foreground">
                         Invite teammates and keep authorization explicit.
                     </p>
+                    <div className="mt-4 flex items-center gap-3">
+                        <Badge variant="secondary">
+                            {seats.used} of {seats.total} seats used
+                        </Badge>
+                        <span className="text-xs text-muted-foreground capitalize">
+                            {seats.tier?.replace('_', ' ')} · {seats.status}
+                        </span>
+                    </div>
                 </div>
                 <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                     <Card className="rounded-2xl border-border/60 shadow-sm">
@@ -78,13 +95,56 @@ export default function Members({
                                             {member.email}
                                         </p>
                                     </div>
-                                    <Badge
-                                        variant="secondary"
-                                        className="capitalize"
-                                    >
-                                        <ShieldCheck className="mr-1 size-3" />
-                                        {member.pivot.role}
-                                    </Badge>
+                                    {member.pivot.role === 'owner' ? (
+                                        <Badge
+                                            variant="secondary"
+                                            className="capitalize"
+                                        >
+                                            <ShieldCheck className="mr-1 size-3" />
+                                            Owner
+                                        </Badge>
+                                    ) : (
+                                        <>
+                                            <Select
+                                                value={member.pivot.role}
+                                                onValueChange={(role) =>
+                                                    router.patch(
+                                                        `/members/${member.id}`,
+                                                        {
+                                                            role,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                <SelectTrigger className="w-32 capitalize">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {roles.map((role) => (
+                                                        <SelectItem
+                                                            key={role}
+                                                            value={role}
+                                                            className="capitalize"
+                                                        >
+                                                            {role}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                aria-label={`Remove ${member.name}`}
+                                                onClick={() =>
+                                                    router.delete(
+                                                        `/members/${member.id}`,
+                                                    )
+                                                }
+                                            >
+                                                <Trash2 className="size-4" />
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             ))}
                         </CardContent>
@@ -132,7 +192,10 @@ export default function Members({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button className="w-full rounded-xl">
+                                <Button
+                                    className="w-full rounded-xl"
+                                    disabled={seats.used >= seats.total}
+                                >
                                     <Mail className="mr-1 size-4" /> Send
                                     invitation
                                 </Button>
@@ -170,6 +233,18 @@ export default function Members({
                                             invitation.expires_at,
                                         ).toLocaleDateString()}
                                     </span>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        aria-label={`Cancel invitation for ${invitation.email}`}
+                                        onClick={() =>
+                                            router.delete(
+                                                `/members/invitations/${invitation.id}`,
+                                            )
+                                        }
+                                    >
+                                        <Trash2 className="size-4" />
+                                    </Button>
                                 </div>
                             ))}
                         </CardContent>

@@ -138,6 +138,12 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             ->withTimestamps();
     }
 
+    /** @return HasMany<OrganizationSeat, $this> */
+    public function organizationSeats(): HasMany
+    {
+        return $this->hasMany(OrganizationSeat::class);
+    }
+
     /** @return BelongsTo<Organization, $this> */
     public function currentOrganization(): BelongsTo
     {
