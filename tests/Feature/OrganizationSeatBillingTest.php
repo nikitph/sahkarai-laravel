@@ -122,6 +122,25 @@ class OrganizationSeatBillingTest extends TestCase
         ]);
     }
 
+    public function test_team_billing_page_preserves_shared_organization_navigation_props(): void
+    {
+        [$owner, $organization] = $this->organization('Navigation Co');
+
+        $this->actingAs($owner)->get(route('billing.team.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('billing/team')
+                ->where('billingOrganization.id', $organization->id)
+                ->where('organization.current.id', $organization->id)
+                ->where('organization.permissions', [
+                    'organization.manage',
+                    'billing.manage',
+                    'members.manage',
+                    'audit.view',
+                    'projects.manage',
+                ]));
+    }
+
     public function test_razorpay_receives_native_quantity_and_discount_offer(): void
     {
         config(['sahkarai.razorpay.plans.tier_3' => 'plan_team_tier_3']);

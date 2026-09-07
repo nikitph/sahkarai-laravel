@@ -44,7 +44,7 @@ class OrganizationBillingController extends Controller
         }
 
         return Inertia::render('billing/team', [
-            'organization' => $organization,
+            'billingOrganization' => $organization,
             'canManageSeats' => $organization ? $request->user()->can('manageMembers', $organization) : false,
             'subscription' => $subscription,
             'plans' => $plans,

@@ -35,7 +35,7 @@ const tierNames: Record<string, string> = {
 };
 
 export default function TeamBilling({
-    organization,
+    billingOrganization,
     canManageSeats,
     subscription,
     plans,
@@ -43,7 +43,7 @@ export default function TeamBilling({
     checkout,
     autoApprove,
 }: {
-    organization: { id: number; name: string } | null;
+    billingOrganization: { id: number; name: string } | null;
     canManageSeats: boolean;
     subscription: {
         tier: string;
@@ -126,7 +126,9 @@ export default function TeamBilling({
 
     const submit = () =>
         router.post('/billing/team', {
-            organization_name: organization ? undefined : organizationName,
+            organization_name: billingOrganization
+                ? undefined
+                : organizationName,
             tier,
             seats,
         });
@@ -152,7 +154,7 @@ export default function TeamBilling({
                 {subscription ? (
                     <Card className="max-w-2xl rounded-2xl">
                         <CardHeader>
-                            <CardTitle>{organization?.name}</CardTitle>
+                            <CardTitle>{billingOrganization?.name}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
                             <p className="text-lg font-medium">
@@ -182,7 +184,7 @@ export default function TeamBilling({
                 ) : (
                     <div className="grid gap-6 lg:grid-cols-[1.3fr_.7fr]">
                         <div className="space-y-5">
-                            {!organization && (
+                            {!billingOrganization && (
                                 <div className="space-y-2">
                                     <Label htmlFor="organization_name">
                                         Organization name
@@ -283,7 +285,7 @@ export default function TeamBilling({
                                     className="w-full"
                                     onClick={submit}
                                     disabled={
-                                        !organization &&
+                                        !billingOrganization &&
                                         !organizationName.trim()
                                     }
                                 >
