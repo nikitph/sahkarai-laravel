@@ -111,6 +111,7 @@ Repository or environment variables:
 | Variable | Purpose |
 | --- | --- |
 | `DEPLOY_HOST` | Reserved IP when infrastructure is unchanged |
+| `DEPLOY_SSH_HOST_KEY` | Trusted public host key in `ssh-ed25519 AAAA...` form; verify it out of band before updating |
 | `APP_HOST` | Public application hostname |
 | `APP_HOSTS` | Optional comma-separated TLS hostnames routed to the app; `APP_HOST` remains canonical |
 | `DEPLOY_REVERB_HOST` | Public Reverb hostname |

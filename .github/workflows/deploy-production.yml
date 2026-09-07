@@ -250,6 +250,7 @@ jobs:
       DEPLOY_REVERB_HOST: ${{ needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
       DEPLOY_REVERB_HOSTS: ${{ vars.DEPLOY_REVERB_HOSTS || needs.infrastructure.outputs.reverb_host || vars.DEPLOY_REVERB_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+      DEPLOY_SSH_HOST_KEY: ${{ vars.DEPLOY_SSH_HOST_KEY }}
       REGULATORY_STORAGE_DISK: ${{ vars.REGULATORY_STORAGE_DISK || 'local' }}
       SPACES_REGION: ${{ vars.SPACES_REGION || 'blr1' }}
       SPACES_BUCKET_NAME: ${{ vars.SPACES_BUCKET_NAME }}
@@ -285,6 +286,7 @@ jobs:
           test -n "$APP_HOSTS"
           test -n "$DEPLOY_REVERB_HOST"
           test -n "$DEPLOY_REVERB_HOSTS"
+          test -n "$DEPLOY_SSH_HOST_KEY"
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
@@ -350,7 +352,7 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/sahkarai_laravel_deploy
           chmod 600 ~/.ssh/sahkarai_laravel_deploy
-          ssh-keyscan -H "$DEPLOY_HOST" > ~/.ssh/known_hosts
+          printf '%s %s\n' "$DEPLOY_HOST" "$DEPLOY_SSH_HOST_KEY" > ~/.ssh/known_hosts
 
       - name: Map GitHub secrets into Kamal
         run: |
