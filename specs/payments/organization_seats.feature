@@ -15,7 +15,7 @@ Feature: Organization subscriptions and seat administration
       Then Razorpay receives subscription quantity <seats>
       And the configured <discount>% offer is applied per seat
       And the owner reserves one of the seats
-      And no paid access is granted before a signed lifecycle webhook
+      And access follows the configured local-approval or signed-provider mode
 
       Examples:
         | seats | discount |
@@ -36,7 +36,7 @@ Feature: Organization subscriptions and seat administration
         | 1     |
         | 26    |
 
-  Rule: Seat access follows signed provider state
+  Rule: Seat access follows the configured approval mode
 
     @webhook @idempotency
     Scenario: Activation and renewal apply per-seat entitlements once
@@ -45,6 +45,14 @@ Feature: Organization subscriptions and seat administration
       Then active seat holders receive Tier 2 access
       And each active seat holder receives 200 monthly credits
       And redelivery of the same event does not grant credits twice
+
+    @happy
+    Scenario: Local approval bypasses provider checkout
+      Given organization billing is enabled in local-approval mode
+      When an owner confirms an organization purchase
+      Then no Razorpay subscription is created
+      And the organization subscription is active immediately
+      And the owner seat and tier credits are activated immediately
 
   Rule: Owners and admins administer seats within purchased capacity
 

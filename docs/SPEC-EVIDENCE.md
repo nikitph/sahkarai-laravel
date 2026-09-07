@@ -1,6 +1,6 @@
 # Gherkin conformance evidence
 
-This inventory is the review ledger for all **60 feature files / 328 declared scenarios** in `specs/`.
+This inventory is the review ledger for all **60 feature files / 329 declared scenarios** in `specs/`.
 The Gherkin is the product contract, not an executable parallel test stack: behavior is proven through Laravel feature tests, policy tests, AI SDK fakes, signed provider fixtures, PostgreSQL/Docker smoke tests, and compiled-browser checks. Scenario outlines are exercised through enum/config boundaries and representative locale/tier/source cases rather than copied into a second step-definition framework.
 
 | Feature | Scenarios | Primary implementation and evidence |
@@ -59,7 +59,7 @@ The Gherkin is the product contract, not an executable parallel test stack: beha
 | `payments/payment_cancellation` | 3 | provider-scheduled cancellation and local pending Free transition; billing UI/controller tests |
 | `payments/payment_downgrade` | 6 | provider cycle-end change, local pending state, resume and anniversary job; deferred-transition tests |
 | `payments/payment_failed_renewal` | 4 | provider retry remains authoritative; each failure logs email/in-app, halted expiry downgrades/notifies |
-| `payments/organization_seats` | 8 | quantity/offer checkout, tenant-scoped seat model, webhook entitlements and policy-checked member administration; `OrganizationSeatBillingTest` and `TenantIsolationTest` |
+| `payments/organization_seats` | 9 | local auto-approval, retained quantity/offer checkout, tenant-scoped seat model, webhook entitlements and policy-checked member administration; `OrganizationSeatBillingTest` and `TenantIsolationTest` |
 | `payments/payment_plans` | 6 | INR monthly plan/config contract and checkout payload; pricing/checkout tests |
 | `payments/payment_refunds` | 2 | no user refund route; signed refund webhook creates idempotent adjustment entry |
 | `payments/payment_topup_dormant` | 4 | no purchase route; signed/idempotent constrained top-up webhook; webhook tests |

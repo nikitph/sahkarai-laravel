@@ -31,7 +31,7 @@ The source contract contains 60 Gherkin feature files. TypeScript files alongsid
 - `tests/Feature/OrganizationSeatBillingTest.php`: discount bands, quantity/offer checkout, webhook-authoritative activation, per-seat credit idempotency, invitation capacity reservation, acceptance/removal, role authorization, and cross-tenant denial.
 - Existing auth/settings/organization/conformance tests continue to protect initializer behavior.
 - `composer verify` runs formatting, PHPStan, the complete PHP test suite, ESLint, TypeScript, and a production Vite build.
-- `docs/SPEC-EVIDENCE.md` inventories every one of the 60 feature files and maps all 328 declared scenarios to their primary implementation and verification evidence.
+- `docs/SPEC-EVIDENCE.md` inventories every one of the 60 feature files and maps all 329 declared scenarios to their primary implementation and verification evidence.
 - The Docker/PostgreSQL smoke pass covers both a clean 17-migration seed and rollback/re-upgrade from legacy locale-shaped metadata, then exercises the compiled production image as web/worker/scheduler/Reverb roles.
 
 Last offline conformance run (2026-07-16): 97 tests passed with no skips and 542 assertions. ESLint, Prettier, TypeScript, Pint, PHPStan, Vite production build, PostgreSQL 17 clean/upgrade migrations, Docker health, PostgreSQL full-text search, and compiled browser checks passed.

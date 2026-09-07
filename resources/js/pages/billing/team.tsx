@@ -41,6 +41,7 @@ export default function TeamBilling({
     plans,
     discounts,
     checkout,
+    autoApprove,
 }: {
     organization: { id: number; name: string } | null;
     canManageSeats: boolean;
@@ -54,6 +55,7 @@ export default function TeamBilling({
     plans: Record<string, Plan>;
     discounts: Discount[];
     checkout: Checkout;
+    autoApprove: boolean;
 }) {
     const [tier, setTier] = useState('tier_2');
     const [seats, setSeats] = useState(5);
@@ -285,11 +287,14 @@ export default function TeamBilling({
                                         !organizationName.trim()
                                     }
                                 >
-                                    Continue to secure checkout
+                                    {autoApprove
+                                        ? 'Activate organization plan'
+                                        : 'Continue to secure checkout'}
                                 </Button>
                                 <p className="text-xs text-muted-foreground">
-                                    Taxes may be added by Razorpay. Access
-                                    begins only after payment confirmation.
+                                    {autoApprove
+                                        ? 'Payment confirmation is temporarily bypassed; access activates immediately.'
+                                        : 'Taxes may be added by Razorpay. Access begins only after payment confirmation.'}
                                 </p>
                             </CardContent>
                         </Card>

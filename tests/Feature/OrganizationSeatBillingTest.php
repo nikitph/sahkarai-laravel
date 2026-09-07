@@ -33,6 +33,7 @@ class OrganizationSeatBillingTest extends TestCase
         config([
             'sahkarai.razorpay.key_id' => 'rzp_test_team',
             'sahkarai.razorpay.organization_billing.enabled' => true,
+            'sahkarai.razorpay.organization_billing.razorpay_enabled' => false,
             'sahkarai.razorpay.organization_billing.discounts.0.offer_id' => 'offer_5',
             'sahkarai.razorpay.organization_billing.discounts.1.offer_id' => 'offer_10',
             'sahkarai.razorpay.organization_billing.discounts.2.offer_id' => 'offer_15',
@@ -55,6 +56,7 @@ class OrganizationSeatBillingTest extends TestCase
 
     public function test_owner_can_start_team_checkout_without_receiving_early_access(): void
     {
+        config(['sahkarai.razorpay.organization_billing.razorpay_enabled' => true]);
         $owner = User::factory()->create();
         $gateway = Mockery::mock(BillingGateway::class);
         $gateway->shouldReceive('createOrganizationSubscription')
@@ -84,6 +86,39 @@ class OrganizationSeatBillingTest extends TestCase
             'organization_id' => $subscription->organization_id,
             'user_id' => $owner->id,
             'status' => OrganizationSeatStatus::Reserved->value,
+        ]);
+    }
+
+    public function test_local_approval_activates_the_plan_owner_seat_and_credits_without_razorpay(): void
+    {
+        $owner = User::factory()->create();
+        $gateway = Mockery::mock(BillingGateway::class);
+        $gateway->shouldNotReceive('createOrganizationSubscription');
+        $this->app->instance(BillingGateway::class, $gateway);
+
+        $this->actingAs($owner)->post(route('billing.team.store'), [
+            'organization_name' => 'Local Approval Co',
+            'tier' => Tier::Tier2->value,
+            'seats' => 10,
+        ])->assertRedirect(route('billing.team.index'))
+            ->assertSessionMissing('razorpay_team_checkout');
+
+        $subscription = Subscription::query()->where('purchaser_user_id', $owner->id)->firstOrFail();
+        $this->assertSame('local', $subscription->provider);
+        $this->assertNull($subscription->provider_subscription_id);
+        $this->assertSame(SubscriptionStatus::Active, $subscription->status);
+        $this->assertSame(Tier::Tier2, $subscription->tier);
+        $this->assertSame(10, $subscription->seat_quantity);
+        $this->assertSame(1000, $subscription->discount_basis_points);
+        $this->assertSame(Tier::Tier2, $owner->refresh()->tier);
+        $this->assertSame(200, $owner->credits_balance);
+
+        app(TenantContext::class)->set($subscription->organization);
+        $this->assertSame(OrganizationSeatStatus::Active, OrganizationSeat::query()->firstOrFail()->status);
+        $this->assertDatabaseHas('credit_ledger', [
+            'user_id' => $owner->id,
+            'amount' => 200,
+            'reason' => 'grant_cycle',
         ]);
     }
 

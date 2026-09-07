@@ -34,7 +34,7 @@ class OrganizationSeatPricing
         }
 
         $offerId = (string) ($band['offer_id'] ?? '');
-        if ($offerId === '') {
+        if (config('sahkarai.razorpay.organization_billing.razorpay_enabled') && $offerId === '') {
             throw new RuntimeException('The Razorpay offer for this organization discount is not configured.');
         }
 

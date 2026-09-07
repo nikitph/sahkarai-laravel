@@ -20,7 +20,7 @@ class BillingController extends Controller
     public function index(Request $request): Response|RedirectResponse
     {
         $organizationSubscription = $request->user()->currentOrganization?->subscription()->first();
-        if (config('sahkarai.razorpay.organization_billing.enabled') && $organizationSubscription?->provider_subscription_id) {
+        if (config('sahkarai.razorpay.organization_billing.enabled') && $organizationSubscription) {
             return redirect()->route('billing.team.index');
         }
 
@@ -40,7 +40,7 @@ class BillingController extends Controller
 
     public function subscribe(Request $request, BillingGateway $gateway): RedirectResponse
     {
-        if ($request->user()->currentOrganization?->subscription()->whereNotNull('provider_subscription_id')->exists()) {
+        if ($request->user()->currentOrganization?->subscription()->exists()) {
             throw ValidationException::withMessages(['tier' => 'Your access is managed by an organization subscription.']);
         }
 

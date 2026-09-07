@@ -49,6 +49,7 @@ class OrganizationBillingController extends Controller
             'subscription' => $subscription,
             'plans' => $plans,
             'discounts' => $discounts,
+            'autoApprove' => ! config('sahkarai.razorpay.organization_billing.razorpay_enabled'),
             'checkout' => $request->session()->pull('razorpay_team_checkout')
                 ?? ($subscription?->status->value === 'pending' && $subscription->provider_subscription_id
                     ? $this->checkoutPayload($request, $subscription)
@@ -70,7 +71,9 @@ class OrganizationBillingController extends Controller
             (int) $data['seats'],
         );
 
-        $request->session()->put('razorpay_team_checkout', $this->checkoutPayload($request, $result['subscription']));
+        if ($result['subscription']->provider_subscription_id) {
+            $request->session()->put('razorpay_team_checkout', $this->checkoutPayload($request, $result['subscription']));
+        }
         $context->set($result['organization']);
         try {
             $audit->record('organization.subscription.created', $result['subscription'], [
@@ -82,7 +85,11 @@ class OrganizationBillingController extends Controller
             $context->clear();
         }
 
-        return redirect()->route('billing.team.index')->with('success', 'Complete checkout to activate your organization seats.');
+        $message = $result['subscription']->status->value === 'active'
+            ? 'Your organization plan and seats are active.'
+            : 'Complete checkout to activate your organization seats.';
+
+        return redirect()->route('billing.team.index')->with('success', $message);
     }
 
     /** @return array<string, int|string> */

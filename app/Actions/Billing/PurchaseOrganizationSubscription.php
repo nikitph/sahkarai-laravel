@@ -25,6 +25,7 @@ class PurchaseOrganizationSubscription
         private readonly CreateOrganization $createOrganization,
         private readonly OrganizationSeatPricing $pricing,
         private readonly BillingGateway $gateway,
+        private readonly ApplyOrganizationSubscriptionEntitlements $entitlements,
     ) {}
 
     /** @return array{subscription: Subscription, organization: Organization, quote: array<string, int|string>} */
@@ -35,6 +36,7 @@ class PurchaseOrganizationSubscription
         }
 
         $quote = $this->pricing->quote($tier, $seats);
+        $usesRazorpay = (bool) config('sahkarai.razorpay.organization_billing.razorpay_enabled');
         $organization = $purchaser->currentOrganization;
 
         if (! $organization) {
@@ -50,7 +52,7 @@ class PurchaseOrganizationSubscription
         }
 
         $existing = $organization->subscription()->first();
-        if ($existing?->provider_subscription_id) {
+        if ($existing) {
             throw ValidationException::withMessages(['seats' => 'This organization already has a subscription.']);
         }
 
@@ -59,19 +61,22 @@ class PurchaseOrganizationSubscription
         $context->set($organization);
 
         try {
-            $subscription = DB::transaction(function () use ($organization, $purchaser, $tier, $quote): Subscription {
+            $subscription = DB::transaction(function () use ($organization, $purchaser, $tier, $quote, $usesRazorpay): Subscription {
                 $subscription = Subscription::query()->updateOrCreate(
                     ['organization_id' => $organization->getKey()],
                     [
                         'user_id' => null,
                         'purchaser_user_id' => $purchaser->getKey(),
-                        'tier' => Tier::Free,
-                        'pending_tier' => $tier,
-                        'status' => SubscriptionStatus::Pending,
+                        'provider' => $usesRazorpay ? 'razorpay' : 'local',
+                        'tier' => $usesRazorpay ? Tier::Free : $tier,
+                        'pending_tier' => $usesRazorpay ? $tier : null,
+                        'status' => $usesRazorpay ? SubscriptionStatus::Pending : SubscriptionStatus::Active,
+                        'current_period_start' => $usesRazorpay ? null : now(),
+                        'current_period_end' => $usesRazorpay ? null : now()->addMonth(),
                         'seat_quantity' => $quote['seats'],
                         'discount_basis_points' => $quote['discount_basis_points'],
                         'unit_price' => $quote['unit_price'],
-                        'provider_offer_id' => $quote['offer_id'],
+                        'provider_offer_id' => $usesRazorpay ? $quote['offer_id'] : null,
                     ],
                 );
 
@@ -83,22 +88,30 @@ class PurchaseOrganizationSubscription
                 return $subscription;
             });
 
-            $provider = $this->gateway->createOrganizationSubscription(
-                $organization,
-                $purchaser,
-                $tier,
-                $seats,
-                (string) $quote['offer_id'],
-            );
-            $providerId = (string) ($provider['id'] ?? '');
-            if ($providerId === '') {
-                throw new RuntimeException('Razorpay did not return a subscription identifier.');
-            }
+            if ($usesRazorpay) {
+                $provider = $this->gateway->createOrganizationSubscription(
+                    $organization,
+                    $purchaser,
+                    $tier,
+                    $seats,
+                    (string) $quote['offer_id'],
+                );
+                $providerId = (string) ($provider['id'] ?? '');
+                if ($providerId === '') {
+                    throw new RuntimeException('Razorpay did not return a subscription identifier.');
+                }
 
-            $subscription->update([
-                'provider_subscription_id' => $providerId,
-                'provider_payload' => $provider,
-            ]);
+                $subscription->update([
+                    'provider_subscription_id' => $providerId,
+                    'provider_payload' => $provider,
+                ]);
+            } else {
+                $this->entitlements->activate(
+                    $subscription->refresh(),
+                    "local-approval-{$subscription->getKey()}",
+                    true,
+                );
+            }
 
             return ['subscription' => $subscription->refresh(), 'organization' => $organization, 'quote' => $quote];
         } finally {

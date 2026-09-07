@@ -96,7 +96,8 @@ return [
             'tier_3' => env('RAZORPAY_TIER_3_PLAN_ID'),
         ],
         'organization_billing' => [
-            'enabled' => (bool) env('ORGANIZATION_BILLING_ENABLED', false),
+            'enabled' => (bool) env('ORGANIZATION_BILLING_ENABLED', true),
+            'razorpay_enabled' => (bool) env('ORGANIZATION_BILLING_RAZORPAY_ENABLED', false),
             'min_seats' => 2,
             'max_seats' => 25,
             'discounts' => [
