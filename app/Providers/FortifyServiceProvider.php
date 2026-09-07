@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\RegisterResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,6 +12,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -21,7 +23,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
     }
 
     /**
@@ -67,9 +69,37 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/register', [
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
+        Fortify::registerView(function () {
+            $plans = config('sahkarai.tiers', []);
+            $plans = is_array($plans) ? $plans : [];
+            unset($plans['free']);
+
+            $configuredDiscounts = config('sahkarai.razorpay.organization_billing.discounts', []);
+            $discounts = [];
+            if (is_array($configuredDiscounts)) {
+                foreach ($configuredDiscounts as $band) {
+                    if (is_array($band)) {
+                        $discounts[] = [
+                            'min' => $band['min'],
+                            'max' => $band['max'],
+                            'percent' => $band['basis_points'] / 100,
+                        ];
+                    }
+                }
+            }
+
+            return Inertia::render('auth/register', [
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'organizationBilling' => [
+                    'enabled' => (bool) config('sahkarai.razorpay.organization_billing.enabled'),
+                    'autoApprove' => ! config('sahkarai.razorpay.organization_billing.razorpay_enabled'),
+                    'minSeats' => (int) config('sahkarai.razorpay.organization_billing.min_seats', 2),
+                    'maxSeats' => (int) config('sahkarai.razorpay.organization_billing.max_seats', 25),
+                    'plans' => $plans,
+                    'discounts' => $discounts,
+                ],
+            ]);
+        });
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 

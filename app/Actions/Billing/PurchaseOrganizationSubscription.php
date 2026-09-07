@@ -12,6 +12,7 @@ use App\Models\OrganizationSeat;
 use App\Models\Permission;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Support\Audit\Audit;
 use App\Support\Billing\OrganizationSeatPricing;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -26,6 +27,7 @@ class PurchaseOrganizationSubscription
         private readonly OrganizationSeatPricing $pricing,
         private readonly BillingGateway $gateway,
         private readonly ApplyOrganizationSubscriptionEntitlements $entitlements,
+        private readonly Audit $audit,
     ) {}
 
     /** @return array{subscription: Subscription, organization: Organization, quote: array<string, int|string>} */
@@ -112,6 +114,12 @@ class PurchaseOrganizationSubscription
                     true,
                 );
             }
+
+            $this->audit->recordAs($purchaser, 'organization.subscription.created', $subscription, [
+                'tier' => $tier->value,
+                'seats' => $seats,
+                'discount_basis_points' => $quote['discount_basis_points'],
+            ]);
 
             return ['subscription' => $subscription->refresh(), 'organization' => $organization, 'quote' => $quote];
         } finally {

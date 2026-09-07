@@ -16,9 +16,15 @@ The private upload pipeline reuses the same downstream jobs:
 
 `Tier 2 / Tier 3 / admin upload → Laravel content-based PDF validation → PDF parser preflight → store private immutable original → extract text → AI interpretation → publish to owner`
 
-The user path is:
+The individual user path is:
 
 `authenticated route → policy → controller → action / query service → transactional write → queued side effect → Inertia response`
+
+Registration can also branch directly into organization setup:
+
+`create identity + choose organization plan → create owned organization → activate or open checkout for 2–25 seats → manage invitations`
+
+Free individual accounts retain the separate option to create an organization plan later from billing.
 
 Controllers validate and shape HTTP responses. Stateful domain transitions live in actions or jobs. External provider calls live behind AI agents, source adapters, or the billing gateway.
 

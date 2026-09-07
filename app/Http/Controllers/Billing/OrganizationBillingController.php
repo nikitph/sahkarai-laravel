@@ -7,8 +7,6 @@ use App\Enums\Tier;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\PurchaseOrganizationSubscriptionRequest;
 use App\Models\Subscription;
-use App\Support\Audit\Audit;
-use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -60,8 +58,6 @@ class OrganizationBillingController extends Controller
     public function store(
         PurchaseOrganizationSubscriptionRequest $request,
         PurchaseOrganizationSubscription $purchase,
-        Audit $audit,
-        TenantContext $context,
     ): RedirectResponse {
         $data = $request->validated();
         $result = $purchase->handle(
@@ -73,16 +69,6 @@ class OrganizationBillingController extends Controller
 
         if ($result['subscription']->provider_subscription_id) {
             $request->session()->put('razorpay_team_checkout', $this->checkoutPayload($request, $result['subscription']));
-        }
-        $context->set($result['organization']);
-        try {
-            $audit->record('organization.subscription.created', $result['subscription'], [
-                'tier' => $data['tier'],
-                'seats' => (int) $data['seats'],
-                'discount_basis_points' => $result['quote']['discount_basis_points'],
-            ]);
-        } finally {
-            $context->clear();
         }
 
         $message = $result['subscription']->status->value === 'active'
