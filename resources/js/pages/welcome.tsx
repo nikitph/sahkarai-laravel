@@ -1,13 +1,16 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
+    BadgePercent,
     BellRing,
     Bot,
+    Building2,
     Check,
     FileCheck2,
     Languages,
     Search,
     ShieldCheck,
+    UsersRound,
 } from 'lucide-react';
 import {
     MotionConfig,
@@ -187,6 +190,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function Welcome() {
     const { auth } = usePage().props;
     const primaryHref = auth.user ? '/archive' : '/register';
+    const organizationHref = auth.user ? '/billing/team' : '/register';
     const prefersReducedMotion = useReducedMotion();
     const { scrollYProgress } = useScroll();
     const progressScale = useTransform(
@@ -1140,6 +1144,69 @@ export default function Welcome() {
                                 </motion.article>
                             ))}
                         </motion.div>
+                        <motion.aside
+                            variants={reveal}
+                            className="mt-6 overflow-hidden rounded-3xl border border-teal-900/10 bg-teal-50 dark:border-teal-300/15 dark:bg-teal-950/40"
+                        >
+                            <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(28rem,.8fr)]">
+                                <div className="p-8 md:p-10 lg:p-12">
+                                    <div className="flex items-center gap-2 text-xs font-semibold tracking-[.16em] text-teal-700 uppercase dark:text-teal-300">
+                                        <Building2 className="size-4" />
+                                        Organization plans
+                                    </div>
+                                    <h3 className="mt-5 max-w-2xl text-3xl leading-tight font-semibold tracking-[-0.035em] md:text-4xl">
+                                        One plan for your whole team.
+                                    </h3>
+                                    <p className="mt-4 max-w-2xl leading-7 text-slate-600 dark:text-slate-300">
+                                        Choose any paid tier for 2–25 seats.
+                                        Every active member gets the selected
+                                        plan, while the owner can invite people
+                                        and administer seat access.
+                                    </p>
+                                    <Button
+                                        asChild
+                                        className="mt-7 h-12 rounded-full px-6"
+                                    >
+                                        <Link href={organizationHref}>
+                                            Choose an organization plan
+                                            <ArrowRight className="ml-2 size-4" />
+                                        </Link>
+                                    </Button>
+                                </div>
+                                <div className="grid border-t border-teal-900/10 sm:grid-cols-3 lg:border-t-0 lg:border-l dark:border-teal-300/15">
+                                    {[
+                                        {
+                                            icon: UsersRound,
+                                            value: '2–25',
+                                            label: 'seats per organization',
+                                        },
+                                        {
+                                            icon: BadgePercent,
+                                            value: '5–25%',
+                                            label: 'automatic volume discount',
+                                        },
+                                        {
+                                            icon: Check,
+                                            value: 'Per seat',
+                                            label: 'simple monthly billing',
+                                        },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.value}
+                                            className="border-b border-teal-900/10 p-7 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0 lg:flex lg:flex-col lg:justify-center dark:border-teal-300/15"
+                                        >
+                                            <item.icon className="size-5 text-teal-700 dark:text-teal-300" />
+                                            <div className="mt-5 text-2xl font-semibold tracking-tight">
+                                                {item.value}
+                                            </div>
+                                            <div className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
+                                                {item.label}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.aside>
                     </motion.div>
                 </section>
 
